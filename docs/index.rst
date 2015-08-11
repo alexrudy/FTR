@@ -1,13 +1,11 @@
 Documentation
 =============
 
-This is an affiliated package for the AstroPy package. The documentation for
-this package is here:
 
 .. toctree::
   :maxdepth: 2
 
-  packagename/index.rst
+  FTR/index.rst
 
 .. note:: The layout of this directory is simply a suggestion.  To follow
           traditional practice, do *not* edit this page, but instead place
