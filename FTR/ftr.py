@@ -35,11 +35,12 @@ from .utils import (complexmp, ignoredivide, remove_piston, fftgrid,
 __all__ = ['FTRFilter', 'FourierTransformReconstructor', 'mod_hud_filter', 'fried_filter', 'ideal_filter']
 
 FTRFilter = collections.namedtuple("FTRFilter", ["gx", "gy", "name"])
-FTRFilter.__doc__ = """
-FTRFilter(gx,gy,name)
+if six.PY3:
+    FTRFilter.__doc__ = """
+    FTRFilter(gx,gy,name)
 
-Tuple collection of filter values.
-"""
+    Tuple collection of filter values.
+    """
 
 class FourierTransformReconstructor(Reconstructor):
     """A reconstructor which uses the fourier transform to turn slopes into an
@@ -164,7 +165,10 @@ class FourierTransformReconstructor(Reconstructor):
         
     @property
     def ap(self):
-        """The aperture, a boolean numpy array."""
+        """The aperture, a boolean numpy array.
+        
+        The aperture is used to compute tip and tilt removal from the Fourier Transform Reconstructor
+        """
         return self._ap
         
     @ap.setter
