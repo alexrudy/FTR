@@ -23,19 +23,41 @@ import collections
 
 # Scientific Python Imports
 import numpy as np
-import scipy.fftpack
+try:
+    import scipy.fftpack as fftpack
+except ImportError:
+    import numpy.fft as fftpack
+
 from astropy.utils import lazyproperty
 
 # Local imports
 from .base import Reconstructor
-from .utils import complexmp, ignoredivide, remove_tilt
+from .utils import (complexmp, ignoredivide, remove_piston, fftgrid, 
+    shapegrid, shapestr)
 
 __all__ = ['FTRFilter', 'FourierTransformReconstructor', 'mod_hud_filter', 'fried_filter', 'ideal_filter']
 
 FTRFilter = collections.namedtuple("FTRFilter", ["gx", "gy", "name"])
 
 class FourierTransformReconstructor(Reconstructor):
-    """Fourier Transform Reconstruction Base
+    """The Fourier Transform Reconstructior uses the fourier domain relationship
+    between the gradient and phase.
+    
+    Parameters
+    ----------
+    shape: tuple of int
+        The size of the reconstruction grid
+    ap: array_like, (n x n)
+        The aperture of valid measurement points
+    filter: string_like, optional
+        The filter name to use. If not provided, it is expected that the user
+        will initialize :attr:`gx` and :attr:`gy` themselves.
+    manage_tt: bool, optional
+        Remove tip and tilt from slopes before reconstruction, and re-apply them after reconstruction. (default is to use ``suppress_tt``)
+    suppress_tt: bool, optional
+        Remove tip and tilt from slopes, and don't re-apply after reconstruction. (default is False)
+    
+    
     """
     
     _gx = None
@@ -46,24 +68,28 @@ class FourierTransformReconstructor(Reconstructor):
     
     def __repr__(self):
         """Represent this object."""
-        return "<{0} ({1:d}x{2:d}) filter='{3}'>".format(self.__class__.__name__, self.n, self.n, self.name)
+        return "<{0} {1} filter='{2}'>".format(self.__class__.__name__, shapestr(self.shape), self.name)
     
-    def __init__(self, n, ap, filter=None, manage_tt=False, suppress_tt=None):
+    def __init__(self, shape, ap, filter=None, manage_tt=None, suppress_tt=False):
         super(FourierTransformReconstructor, self).__init__()
-        self._ap = ap
-        self._n = n
+        self._shape = tuple([np.int(s) for s in shape])
         self._filtername = "Unknown"
         if filter is not None:
             self.use(six.text_type(filter))
+        self.ap = ap
         
-        self.manage_tt = bool(manage_tt)
-        if suppress_tt is None:
-            self.suppress_tt = bool(manage_tt)
-        elif self.manage_tt:
+        self.suppress_tt = bool(suppress_tt)
+        if manage_tt is None:
+            self.manage_tt = bool(suppress_tt)
             self.suppress_tt = bool(suppress_tt)
         else:
+            self.manage_tt = bool(manage_tt)
+            if suppress_tt and not self.manage_tt:
+                raise TypeError("{0:s}: Can't specify manage_tt=False and "
+                "suppress_tt=True, as tip/tilt will not be suppressed when "
+                "tip-tilt isn't removed from the slopes initially.")
             self.suppress_tt = False
-        self.x, self.y = np.meshgrid(np.arange(n) - n/2, np.arange(n) - n/2)
+        self.y, self.x = shapegrid(self.shape)
         
     @property
     def name(self):
@@ -84,14 +110,9 @@ class FourierTransformReconstructor(Reconstructor):
         return FTRFilter(self.gx, self.gy, self.name)
         
     @property
-    def n(self):
-        """The dimension size. Reconstructs on an (n x n) grid."""
-        return self._n
-        
-    @property
     def shape(self):
         """Shape of the reconstructed grid."""
-        return (self.n, self.n)
+        return self._shape
         
     @property
     def gx(self):
@@ -115,6 +136,21 @@ class FourierTransformReconstructor(Reconstructor):
         self._gy = self._validate_filter(gy)
         self._denominator = None
         
+    @property
+    def ap(self):
+        """The aperture"""
+        return self._ap
+        
+    @ap.setter
+    def ap(self, value):
+        """Validate aperture."""
+        ap = np.asarray(value).astype(np.bool)
+        if ap.shape != self.shape:
+            raise ValueError("Aperture should be same shape as input data. Found {0!r}, expected {1!r}.".format(ap.shape, self.shape))
+        if not ap.any():
+            raise ValueError("Aperture must be illuminated somewhere!")
+        self._ap = ap
+        
     def _validate_filter(self, _filter):
         """Ensure that a filter is the correct shape.
         
@@ -125,7 +161,7 @@ class FourierTransformReconstructor(Reconstructor):
         """
         gf = np.asarray(_filter).astype(np.complex)
         if gf.shape != self.shape:
-            raise ValueError("Filter should be same shape as input data. Found {0}, expected {1}.".format(gf.shape, (self.n, self.n)))
+            raise ValueError("Filter should be same shape as input data. Found {0!r}, expected {1!r}.".format(gf.shape, self.shape))
         if not np.isfinite(gf).all():
             raise ValueError("Filter must be finite at all points!")
         return gf
@@ -152,29 +188,20 @@ class FourierTransformReconstructor(Reconstructor):
     def reconstruct(self, xs, ys):
         """The reconstruction method"""
         if self.manage_tt:
-            xs, xt = remove_tilt(self.ap, xs)
-            ys, yt = remove_tilt(self.ap, ys)
+            xs, xt = remove_piston(self.ap, xs)
+            ys, yt = remove_piston(self.ap, ys)
         
-        xs_ft = scipy.fftpack.fftn(xs)
-        ys_ft = scipy.fftpack.fftn(ys)
+        xs_ft = fftpack.fftn(xs)
+        ys_ft = fftpack.fftn(ys)
         
         est_ft = self.apply_filter(xs_ft, ys_ft)
         
-        estimate = np.real(scipy.fftpack.ifftn(est_ft))
+        estimate = np.real(fftpack.ifftn(est_ft))
         
         if self.manage_tt and not self.suppress_tt:
             return estimate + (self.x * xt) + (self.y * yt)
         
         return estimate
-        
-    def __call__(self, xs, ys):
-        """Reconstruct the phase.
-        
-        :param xs: The x slopes.
-        :param ys: The y slopes.
-        
-        """
-        return self.reconstruct(xs, ys)
         
     _REGISTRY = {}
         
@@ -200,34 +227,58 @@ class FourierTransformReconstructor(Reconstructor):
     
     def use(self, filter):
         """Use a particular filter."""
-        self.gx, self.gy, self._filtername = self._REGISTRY[filter](self.n)
+        self.gx, self.gy, self._filtername = self._REGISTRY[filter](self.shape)
         
     @classmethod
-    def get(cls, filter, n):
-        """Get a filter."""
-        return cls._REGISTRY[filter](n)
+    def get(cls, filter, shape):
+        """Get a filter by name."""
+        return cls._REGISTRY[filter](shape)
+        
+    @classmethod
+    def filters(cls):
+        """Return the list of filters available."""
+        return cls._REGISTRY.keys()
+
+@FourierTransformReconstructor.register("hud")
+def hud_filter(shape):
+    """Hudgins shearing interferometer. In this geometry the WFS produces
+    measurements which are the differences in phase values between two points.
+    This corresponds to wavefront sensors centered between each pair of
+    points."""
+    fy, fx = fftgrid(shape)
+    ny, nx = shape
+    
+    gx = np.exp(1j * fx) - 1.0
+    gy = np.exp(1j * fy) - 1.0
+    
+    #TODO: Check that this nyquist nulling is correct.
+    # gx[:,nx/2] = 0.0
+    # gy[ny/2,:] = 0.0
+    
+    #TODO: Check for other null points in the filter.
+    
+    return FTRFilter(gx, gy, "hud")
 
 @FourierTransformReconstructor.register("mod_hud")
-def mod_hud_filter(n):
+def mod_hud_filter(shape):
     """The modified hudgins filter is a geomoetry similar to
     a Fried geometry, but where the slope measurements, rather than
     being the difference between two adjacent points, the slope is
     taken to be the real slope at the point in the center of four
     phase measurement points."""
-    import numpy.fft
-    ff = np.fft.fftfreq(n, 1/(2*np.pi))
-    fx, fy = np.meshgrid(ff, ff)
-
+    fy, fx = fftgrid(shape)
+    ny, nx = shape
+    
     gx = np.exp(1j*fy/2)*(np.exp(1j*fx) - 1)
     gy = np.exp(1j*fx/2)*(np.exp(1j*fy) - 1)
 
-    gx[n/2,:] = 0.0
-    gy[:,n/2] = 0.0
+    gx[ny/2,:] = 0.0
+    gy[:,nx/2] = 0.0
     
     return FTRFilter(gx, gy, "mod_hud")
 
 @FourierTransformReconstructor.register("fried")
-def fried_filter(n):
+def fried_filter(shape):
     """The fried filter is for a system geometry where the
     slope measruement points are taken to be the difference
     between two adjacent points. As such, the slopes are
@@ -238,34 +289,36 @@ def fried_filter(n):
     four phase measurement points is taken (in the x-direction)
     to be the average of the x slope between the top measruements
     and the x slope between the bottom measurement."""
-    import numpy.fft
+    fy, fx = fftgrid(shape)
+    ny, nx = shape
     
-    ff = np.fft.fftfreq(n, 1/(2*np.pi))
-    fx, fy = np.meshgrid(ff, ff)
+    gx = (np.exp(1j*fy) + 1)*(np.exp(1j*fx) - 1)
+    gy = (np.exp(1j*fx) + 1)*(np.exp(1j*fy) - 1)
     
-    gx = (np.exp(1j*fy/2) + 1)*(np.exp(1j*fx) - 1)
-    gy = (np.exp(1j*fx/2) + 1)*(np.exp(1j*fy) - 1)
-    
-    gx[n/2,:] = 0.0
-    gy[:,n/2] = 0.0
+    gx[ny//2,:] = 0.0
+    gy[:,nx//2] = 0.0
     
     return FTRFilter(gx, gy, "fried")
 
 @FourierTransformReconstructor.register("ideal")
-def ideal_filter(n):
+def ideal_filter(shape):
     """An Ideal filter represents a phase where the slope
     measurements are taken to be a continuous sampling of
     the phase between phase measurement points. """
-    import numpy.fft
-    
-    ff = np.fft.fftfreq(n, 1/(2*np.pi))
-    fx, fy = np.meshgrid(ff, ff)
+    fy, fx = fftgrid(shape)
+    ny, nx = shape
     
     with ignoredivide():
-        gx = np.conj(1/fy * ((np.cos(fy) - 1) * np.sin(fx) + (np.cos(fx) - 1) * np.sin(fy) ) +
-                  1j/fy * ((np.cos(fx) - 1) * (np.cos(fy) - 1) - np.sin(fx) * np.sin(fy)))
-        gy = np.conj(1/fx * ((np.cos(fx) - 1) * np.sin(fy) + (np.cos(fy) - 1) * np.sin(fx)) +
-                  1j/fx * ((np.cos(fy) - 1) * (np.cos(fx) - 1) - np.sin(fy) * np.sin(fx)))
+        gx = (
+                  1/fy  * ( (np.cos(fy) - 1) * np.sin(fx) 
+                          + (np.cos(fx) - 1) * np.sin(fy) ) +
+                  1j/fy * ( (np.cos(fx) - 1) * (np.cos(fy) - 1) 
+                          - np.sin(fx) * np.sin(fy) ) )
+        gy = (
+                  1/fx  * ( (np.cos(fx) - 1) * np.sin(fy) 
+                          + (np.cos(fy) - 1) * np.sin(fx) ) +
+                  1j/fx * ( (np.cos(fy) - 1) * (np.cos(fx) - 1) 
+                          - np.sin(fy) * np.sin(fx) ) )
       
     # Exclude division by zero!
     gx[0,:] = 0
@@ -273,8 +326,21 @@ def ideal_filter(n):
     
     # the filter is anti-Hermitian here. The real_part takes care
     # of it, but simpler to just zero it out.
-    gx[n/2,:] = 0.0
-    gy[:,n/2] = 0.0
+    gx[ny//2,:] = 0.0
+    gy[:,nx//2] = 0.0
     
     return FTRFilter(gx, gy, "ideal")
+    
+@FourierTransformReconstructor.register("inplace")
+def inplace_filter(shape):
+    """This filter modifies the 'fried' filter so that it reconstructs to the in-place positions of the slopes."""
+    fy, fx = fftgrid(shape)
+    xshift, yshift = (-0.5, -0.5)
+    
+    gx, gy, name = fried_filter(shape)
+    
+    gx *= complexmp(1.0, fx * xshift) * complexmp(1.0, fy * yshift)
+    gy *= complexmp(1.0, fx * xshift) * complexmp(1.0, fy * yshift)
+    
+    return FTRFilter(gx, gy, "inplace")
     
