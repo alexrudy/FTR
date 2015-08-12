@@ -68,7 +68,7 @@ class FourierTransformReconstructor(Reconstructor):
     
     def __repr__(self):
         """Represent this object."""
-        return "<{0} {1} filter='{2}'{3}>".format(self.__class__.__name__, shapestr(self.shape), self.name, "" if self.tt_mode is "unmanaged" else " tt='{0}'".format(self.tt_mode))
+        return "<{0} {1} filter='{2}'{3}>".format(self.__class__.__name__, shapestr(self.shape), self.name, "" if self.tt_mode == "unmanaged" else " tt='{0}'".format(self.tt_mode))
     
     def __init__(self, shape, ap, filter=None, manage_tt=None, suppress_tt=False):
         super(FourierTransformReconstructor, self).__init__()
