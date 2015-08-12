@@ -1,10 +1,8 @@
-****************
-Template package
-****************
+********************************
+Fourier Transform Reconstructors
+********************************
 
-This is the documentation for the affiliated package.
+This package implements the Fourier Transform reconstructor in python and c.
 
-Reference/API
-=============
-
-.. automodapi:: packagename
+.. toctree::
+    ftr.rst

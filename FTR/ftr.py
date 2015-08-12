@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-:mod:`ftr` – The Fourier Transfomr reconstructor
-================================================
-
 The fourier transform reconstructor converts slopes (x and y slope grids) to
 phase values. The reconstruction works using the fourier transform of the x
 and y slopes, and applying a filter, which accounts for the way in which those
@@ -38,10 +35,15 @@ from .utils import (complexmp, ignoredivide, remove_piston, fftgrid,
 __all__ = ['FTRFilter', 'FourierTransformReconstructor', 'mod_hud_filter', 'fried_filter', 'ideal_filter']
 
 FTRFilter = collections.namedtuple("FTRFilter", ["gx", "gy", "name"])
+FTRFilter.__doc__ = """
+FTRFilter(gx,gy,name)
+
+Tuple collection of filter values.
+"""
 
 class FourierTransformReconstructor(Reconstructor):
-    """The Fourier Transform Reconstructior uses the fourier domain relationship
-    between the gradient and phase.
+    """A reconstructor which uses the fourier transform to turn slopes into an
+    estiate of the wavefront phase.
     
     Parameters
     ----------
@@ -53,9 +55,33 @@ class FourierTransformReconstructor(Reconstructor):
         The filter name to use. If not provided, it is expected that the user
         will initialize :attr:`gx` and :attr:`gy` themselves.
     manage_tt: bool, optional
-        Remove tip and tilt from slopes before reconstruction, and re-apply them after reconstruction. (default is to use ``suppress_tt``)
+        Remove tip and tilt from slopes before reconstruction, and re-apply
+        them after reconstruction. (default is to use ``suppress_tt``)
     suppress_tt: bool, optional
-        Remove tip and tilt from slopes, and don't re-apply after reconstruction. (default is False)
+        Remove tip and tilt from slopes, and don't re-apply after
+        reconstruction. (default is False)
+        
+    
+    Notes
+    -----
+    
+    The Fourier Transform Reconstructor implements the reconstruction scheme
+    described in chapter 2 of Lisa Poyneer's dissertation. [1]_ The
+    implementation of the Fourier Transform Reconstructor depends on a pair of
+    spatial filters (x and y) which relate the specific geometry of the
+    wavefront sensor to the phase estimation points. Common spatial filters are
+    the "modified Hudgins" filter, ``mod_hud``, and the Fried geometry
+    ``fried``. Additional named filters can be registered with this class using
+    :meth:`~FourierTransformReconstructor.register`, or an entirely custom
+    filter can be used by modifying the :attr:`gx` and :attr:`gy` attributes.
+    
+    
+    References
+    ----------
+    
+    .. [1] Poyneer, L. A. Signal processing for high-precision wavefront
+       control in adaptive optics. (Thesis (Ph.D.) - University of California,
+       2007).
     
     
     """
@@ -138,7 +164,7 @@ class FourierTransformReconstructor(Reconstructor):
         
     @property
     def ap(self):
-        """The aperture"""
+        """The aperture, a boolean numpy array."""
         return self._ap
         
     @ap.setter
