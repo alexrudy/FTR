@@ -68,7 +68,7 @@ class FourierTransformReconstructor(Reconstructor):
     
     def __repr__(self):
         """Represent this object."""
-        return "<{0} {1} filter='{2}'>".format(self.__class__.__name__, shapestr(self.shape), self.name)
+        return "<{0} {1} filter='{2}'{3}>".format(self.__class__.__name__, shapestr(self.shape), self.name, "" if self.tt_mode is "unmanaged" else " tt='{0}'".format(self.tt_mode))
     
     def __init__(self, shape, ap, filter=None, manage_tt=None, suppress_tt=False):
         super(FourierTransformReconstructor, self).__init__()
@@ -150,6 +150,16 @@ class FourierTransformReconstructor(Reconstructor):
         if not ap.any():
             raise ValueError("Aperture must be illuminated somewhere!")
         self._ap = ap
+        
+    @property
+    def tt_mode(self):
+        """Tip/tilt management mode."""
+        if not self.manage_tt:
+            return "unmanaged"
+        elif self.manage_tt and not self.suppress_tt:
+            return "managed"
+        elif self.manage_tt and self.suppress_tt:
+            return "suppressed"
         
     def _validate_filter(self, _filter):
         """Ensure that a filter is the correct shape.
