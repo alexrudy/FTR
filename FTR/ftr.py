@@ -29,10 +29,10 @@ from astropy.utils import lazyproperty
 
 # Local imports
 from .base import Reconstructor
-from .utils import (complexmp, ignoredivide, remove_piston, fftgrid, 
-    shapegrid, shapestr)
+from .utils import (complexmp, ignoredivide, remove_piston, remove_tiptilt, 
+    fftgrid, shapegrid, shapestr, apply_tiptilt)
 
-__all__ = ['FTRFilter', 'FourierTransformReconstructor', 'mod_hud_filter', 'fried_filter', 'ideal_filter']
+__all__ = ['FTRFilter', 'FourierTransformReconstructor', 'mod_hud_filter', 'fried_filter', 'ideal_filter', 'inplace_filter', 'hud_filter']
 
 FTRFilter = collections.namedtuple("FTRFilter", ["gx", "gy", "name"])
 if six.PY3:
@@ -48,10 +48,9 @@ class FourierTransformReconstructor(Reconstructor):
     
     Parameters
     ----------
-    shape: tuple of int
-        The size of the reconstruction grid
-    ap: array_like, (n x n)
-        The aperture of valid measurement points
+    ap: array_like
+        The aperture of valid measurement points, which also defines the
+        reconstructor shape used to generate filters.
     filter: string_like, optional
         The filter name to use. If not provided, it is expected that the user
         will initialize :attr:`gx` and :attr:`gy` themselves.
@@ -84,6 +83,27 @@ class FourierTransformReconstructor(Reconstructor):
        control in adaptive optics. (Thesis (Ph.D.) - University of California,
        2007).
     
+    Examples
+    --------
+    
+    Creating a generic reconstructor will result in an uninitialized filter::
+    >>> import numpy as np
+    >>> aperture = np.ones((10,10))
+    >>> recon = FourierTransformReconstructor(aperture)
+    >>> recon
+    <FourierTransformReconstructor (10x10) filter='Unknown'>
+    
+    You can create a reconstructor with a named filter::
+    >>> import numpy as np
+    >>> aperture = np.ones((10,10))
+    >>> recon = FourierTransformReconstructor(aperture, "fried")
+    >>> recon
+    <FourierTransformReconstructor (10x10) filter='fried'>
+    >>> ys, xs = np.meshgrid(np.arange(10), np.arange(10))
+    >>> recon(xs, ys)
+    array([...])
+    
+    
     
     """
     
@@ -97,13 +117,15 @@ class FourierTransformReconstructor(Reconstructor):
         """Represent this object."""
         return "<{0} {1} filter='{2}'{3}>".format(self.__class__.__name__, shapestr(self.shape), self.name, "" if self.tt_mode == "unmanaged" else " tt='{0}'".format(self.tt_mode))
     
-    def __init__(self, shape, ap, filter=None, manage_tt=None, suppress_tt=False):
+    def __init__(self, ap, filter=None, manage_tt=None, suppress_tt=False):
         super(FourierTransformReconstructor, self).__init__()
-        self._shape = tuple([np.int(s) for s in shape])
+        ap = np.asarray(ap, dtype=np.bool)
+        self._shape = ap.shape
+        self.ap = ap
+        
         self._filtername = "Unknown"
         if filter is not None:
             self.use(six.text_type(filter))
-        self.ap = ap
         
         self.suppress_tt = bool(suppress_tt)
         if manage_tt is None:
@@ -208,25 +230,69 @@ class FourierTransformReconstructor(Reconstructor):
         
     @property
     def denominator(self):
-        """Filter denominator"""
+        """Filter denominator
+        
+        This term normalizes for the magnitude of the individual spatial
+        filters. It is recomputed whenever the filters change, but it is
+        otherwise computed only once for each set of filters.
+        """
         if self._denominator is not None:
             return self._denominator
-        self._denominator = np.abs(self.gx)**2.0 + np.abs(self.gy)**2.0
+        self._denominator = (np.abs(self.gx)**2.0 + np.abs(self.gy)**2.0)
         self._denominator[(self._denominator == 0.0)] = 1.0 #Fix non-hermetian parts.
         return self._denominator
         
     def apply_filter(self, xs_ft, ys_ft):
-        """Apply the filter to the FFT'd values.
+        r"""Apply the filter to the FFT'd values.
         
-        :param xs_ft: The x fourier transform
-        :param ys_ft: THe y fourier transform
-        :returns: The filtered estimate, fourier transformed.
+        Parameters
+        ----------
+        xs_ft : array_like
+            The fourier transform of the x slopes
+        ys_ft : array_like
+            The fourier transform of the y slopes
+            
+        Returns
+        -------
+        est_ft : array_like
+            The fourier transform of the phase estimate.
+        
+        Notes
+        -----
+        
+        This implements the equation
+        
+        .. math::
+            
+            \hat{\Phi} = \frac{G_{wx}^{*} X + 
+            G_{wy}^{*} Y}{|G_{wx}|^{2} + |G_{wy}|^2}
         
         """
-        return (np.conj(self.gx) * xs_ft + np.conj(self.gy) * ys_ft)/self.denominator
+        return ((np.conj(self.gx) * xs_ft + np.conj(self.gy) * ys_ft)
+                / self.denominator)
         
     def reconstruct(self, xs, ys):
-        """The reconstruction method"""
+        """Use the Fourier transform and spatial filters to reconstruct an
+        estimate of the phase.
+        
+        Parameters
+        ----------
+        xs : array_like
+            The x slopes
+        ys : array_like
+            The y slopes
+        
+        Returns
+        -------
+        estimate : array_like
+            An estimate of the phase across all the points
+            where x and y slopes were measured.
+        
+        Notes
+        -----
+        This method serves as the implementation for :meth:`__call__`.
+        
+        """
         if self.manage_tt:
             xs, xt = remove_piston(self.ap, xs)
             ys, yt = remove_piston(self.ap, ys)
@@ -234,20 +300,79 @@ class FourierTransformReconstructor(Reconstructor):
         xs_ft = fftpack.fftn(xs)
         ys_ft = fftpack.fftn(ys)
         
-        est_ft = self.apply_filter(xs_ft, ys_ft)
+        # There is a factor of two here. This is applied because the normalization of the FFT in IDL is different from the one used here. See FFTNormalization.rst
+        est_ft = self.apply_filter(xs_ft, ys_ft) * 2.0
         
         estimate = np.real(fftpack.ifftn(est_ft))
         
         if self.manage_tt and not self.suppress_tt:
-            return estimate + (self.x * xt) + (self.y * yt)
+            print("Re-applying tip/tilt [{},{}]".format(xt, yt))
+            estimate = apply_tiptilt(self.ap, estimate, xt, yt)
         
         return estimate
+        
+    def invert(self, estimate):
+        """Invert the estimate to produce slopes.
+        
+        Parameters
+        ----------
+        estimate : array_like
+            Phase estimate to invert.
+        
+        Returns
+        -------
+        xs : array_like
+            Estimate of the x slopes.
+        ys : array_like
+            Estimate of the y slopes.
+        
+        
+        """
+        if self.manage_tt:
+            estimate, ttx, tty = remove_tiptilt(self.ap, estimate)
+        
+        est_ft = fftpack.fftn(estimate) / 2.0
+        
+        xs_ft = self.gx * est_ft
+        ys_ft = self.gy * est_ft
+        
+        xs = np.real(fftpack.ifftn(xs_ft))
+        ys = np.real(fftpack.ifftn(ys_ft))
+        
+        if self.manage_tt and not self.suppress_tt:
+            xs += ttx
+            ys += tty
+        
+        return (xs, ys)
         
     _REGISTRY = {}
         
     @classmethod
     def register(cls, name, filter=None):
-        """Register a filter generating function."""
+        """Register a filter generating function.
+        
+        This classmethod can be used as a decorator.
+        
+        Parameters
+        ----------
+        name : str
+            The name of the filter to register
+        filter : callable
+            A callable which will return an :class:`FTRFilter`-compatible
+            tuple when provided with the desired shape of the filter.
+            
+        Notes
+        -----
+        
+        To use this method as a decorator, simply provide the filter name::
+            
+            @FourierTransformReconstructor.register("myfilter")
+            def my_filter_function(shape):
+                ...
+                return FTRFilter(gx, gy, "myfilter")
+            
+        
+        """
         
         def _register(filterfunc):
             """Filter Function"""
@@ -266,17 +391,55 @@ class FourierTransformReconstructor(Reconstructor):
             raise TypeError("Filter must be a callable, or a name, and used as a decorator.")
     
     def use(self, filter):
-        """Use a particular filter."""
+        """Use a particular spatial filter for reconstruction.
+        
+        Parameters
+        ----------
+        filter : str
+            The filter name, as it was registered with :meth:`register`
+        
+        Examples
+        --------
+        
+        You can create a reconstructor with one filter::
+        >>> import numpy as np
+        >>> aperture = np.ones((10,10))
+        >>> recon = FourierTransformReconstructor(aperture, "fried")
+        >>> recon
+        <FourierTransformReconstructor (10x10) filter='fried'>
+        >>> recon.use("mod_hud")
+        >>> recon
+        <FourierTransformReconstructor (10x10) filter='mod_hud'>
+        
+        """
         self.gx, self.gy, self._filtername = self._REGISTRY[filter](self.shape)
         
     @classmethod
     def get(cls, filter, shape):
-        """Get a filter by name."""
+        """Get a filter tuple by name from the filter registry.
+        
+        Parameters
+        ----------
+        filter : str
+            The filter name, as it was registered with :meth:`register`
+        shape : tuple of ints
+            The shape of the desired filter.
+        
+        Returns
+        -------
+        gx : array_like
+            The x spatial filter
+        gy : array_like
+            The y spatial filter
+        name : str
+            The filter name
+        
+        """
         return cls._REGISTRY[filter](shape)
         
     @classmethod
     def filters(cls):
-        """Return the list of filters available."""
+        """Return the list of registered filter names."""
         return cls._REGISTRY.keys()
 
 @FourierTransformReconstructor.register("hud")
@@ -340,7 +503,7 @@ def fried_filter(shape):
     
     return FTRFilter(gx, gy, "fried")
 
-@FourierTransformReconstructor.register("ideal")
+# @FourierTransformReconstructor.register("ideal")
 def ideal_filter(shape):
     """An Ideal filter represents a phase where the slope
     measurements are taken to be a continuous sampling of

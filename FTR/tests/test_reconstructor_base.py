@@ -7,7 +7,7 @@ import random
 import six
 import numpy as np
 
-from ..utils import shapestr
+from ..utils import shapestr, remove_piston
 
 class ReconstructorTestBase(object):
     """A base class for reconstructor tests."""
@@ -27,6 +27,11 @@ class ReconstructorTestBase(object):
         x = np.zeros(shape, dtype=np.float)
         y = x.copy()
         return (x, y)
+    
+    @pytest.fixture
+    def phase(self, shape):
+        """Random phase."""
+        return np.random.randn(*shape)
     
     @pytest.fixture
     def reconstructor(self, shape):
