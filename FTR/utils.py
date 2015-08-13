@@ -2,7 +2,9 @@
 from __future__ import (absolute_import, unicode_literals, division,
                         print_function)
                   
-import functools, contextlib
+import functools
+import contextlib
+import warnings
 import numpy as np
 import numpy.fft
 
@@ -94,7 +96,7 @@ def apply_tiptilt(ap, phi, tt_x, tt_y):
 def circle_aperture(shape, r):
     """Create a circle aperture."""
     y, x = shapegrid(shape)
-    return ((x**2 + y**2) <= r**2).astype(np.int)
+    return ((x**2 + y**2) < r**2).astype(np.int)
     
 def fftgrid(shape, scale=1.0/(2.0*np.pi)):
     """FFT Grid"""
@@ -113,6 +115,25 @@ def shapestr(shape):
     """Return a string formatted shape tuple."""
     return "({0})".format("x".join("{0:d}".format(s) for s in shape))
     
-def make_hermetian(data):
-    """Make an array hermetian, assuming the top-right triangle is valid."""
-    pass
+def is_hermitian(matrix):
+    """docstring for is_hermitian"""
+    matrix = np.asmatrix(matrix, dtype=np.complex)
+    if matrix.shape != tuple(reversed(matrix.shape)):
+        return False
+    return np.allclose(matrix.H, matrix)
+    
+def make_hermitian(matrix):
+    """Make an array hermitian, assuming the top-right triangle is valid."""
+    matrix = np.asmatrix(matrix, dtype=np.complex)
+    if matrix.shape != tuple(reversed(matrix.shape)):
+        raise ValueError("Can't make a non-square matrix hermitian.")
+    triu = np.matrix(np.triu(matrix))
+    matrix_h = triu + triu.H
+    matrix_h -= np.diag(matrix_h.diagonal()) / 2.0
+    return matrix_h
+
+def fill_hermitian_fft(array):
+    """Fill an FFT-shifted array so it is hermitian."""
+    array_shifted = np.fft.fftshift(np.asarray(array, dtype=np.complex))
+    array_hermitian = make_hermitian(array_shifted)
+    return np.fft.ifftshift(array_hermitian.view(np.ndarray))
