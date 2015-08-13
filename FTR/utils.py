@@ -7,7 +7,7 @@ import numpy as np
 import numpy.fft
 
 __all__ = ['complexmp', 'ignoredivide', 'remove_piston', 'circle_aperture',
-    'fftgrid', 'shapegrid', 'shapestr']
+    'fftgrid', 'shapegrid', 'shapestr', 'remove_tiptilt', 'apply_tiptilt']
 
 def complexmp(mag, phase):
     """Return a complex number from the magnitude and phase of that number."""
@@ -27,17 +27,17 @@ def remove_piston(ap, phi):
     
     Parameters
     ----------
-    ap, array-like, (n x m):
+    ap : array-like, (n x m)
         the grid of valid measurement positions
-    phi, array-like, (n x m):
+    phi : array-like, (n x m)
         the phase measurement
     
     Returns
     -------
-    phi_np, array-like, (n x m):
+    phi_np : array-like, (n x m)
         the slope measurement with piston removed.
-    ps, float:
-        the tip/tilt value.
+    ps : float
+        the piston value.
         
     
     Notes
@@ -49,6 +49,47 @@ def remove_piston(ap, phi):
     ps = np.sum(phi * ap) / np.sum(ap)
     phi_np = phi - (ps * ap)
     return (phi_np, ps)
+    
+def remove_tiptilt(ap, phi):
+    """Remove tip and tilt from a phase.
+    
+    Parameters
+    ----------
+    ap : array-like, (n x m)
+        the grid of valid measurement positions
+    phi : array-like, (n x m)
+        the phase measurement
+    
+    Returns
+    -------
+    phi_np : array-like, (n x m)
+        the slope measurement with tip and tilt removed.
+    tilt_x : float
+        the x tilt value which was removed
+    tilt_y : float
+        the y tilt value which was removed
+    
+    """
+    y, x = shapegrid(phi.shape)
+    
+    x = ap * ((x * ap) - (x * ap).sum() / ap.sum())
+    y = ap * ((y * ap) - (y * ap).sum() / ap.sum())
+    
+    tip  = np.sum(phi * ap * y) / np.sum(ap * y**2)
+    tilt = np.sum(phi * ap * x) / np.sum(ap * x**2)
+    
+    phi_ntt = phi - (tip * y * ap) - (tilt * x * ap)
+    return (phi_ntt, tilt, tip)
+    
+def apply_tiptilt(ap, phi, tt_x, tt_y):
+    """Apply tip and tilt to a phase."""
+    y, x = shapegrid(phi.shape)
+    
+    x = ap * ((x * ap) - (x * ap).sum() / ap.sum())
+    y = ap * ((y * ap) - (y * ap).sum() / ap.sum())
+    
+    phi_tt = phi + (tt_y * y * ap) + (tt_x * x * ap)
+    return phi_tt
     
 def circle_aperture(shape, r):
     """Create a circle aperture."""
@@ -71,3 +112,7 @@ def shapegrid(shape, centered=True):
 def shapestr(shape):
     """Return a string formatted shape tuple."""
     return "({0})".format("x".join("{0:d}".format(s) for s in shape))
+    
+def make_hermetian(data):
+    """Make an array hermetian, assuming the top-right triangle is valid."""
+    pass

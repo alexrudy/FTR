@@ -68,3 +68,17 @@ def test_remove_piston_known(shape, random_data, aperture):
     d_pr, p = remove_piston(aperture, random_data)
     assert np.allclose(p, 10000)
     
+def test_remove_tiptilt(shape, random_data, aperture):
+    """Test removing a known tip-tilt"""
+    random_data, _ttx, _tty = remove_tiptilt(aperture, random_data)
+    y, x = shapegrid(shape)
+    ttx, tty = random.uniform(-10, 10), random.uniform(-10, 10)
+    ttx, tty = -5, 10
+    tilted_data = apply_tiptilt(aperture, random_data, ttx, tty)
+    
+    ttr, ttxr, ttyr = remove_tiptilt(aperture, tilted_data)
+    assert np.allclose(ttxr, ttx)
+    assert np.allclose(ttyr, tty)
+    assert np.allclose(ttr, random_data)
+    
+    
