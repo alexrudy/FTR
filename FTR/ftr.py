@@ -87,22 +87,24 @@ class FourierTransformReconstructor(Reconstructor):
     --------
     
     Creating a generic reconstructor will result in an uninitialized filter::
-    >>> import numpy as np
-    >>> aperture = np.ones((10,10))
-    >>> recon = FourierTransformReconstructor(aperture)
-    >>> recon
-    <FourierTransformReconstructor (10x10) filter='Unknown'>
+        
+        >>> import numpy as np
+        >>> aperture = np.ones((10,10))
+        >>> recon = FourierTransformReconstructor(aperture)
+        >>> recon
+        <FourierTransformReconstructor (10x10) filter='Unknown'>
+        
     
     You can create a reconstructor with a named filter::
-    >>> import numpy as np
-    >>> aperture = np.ones((10,10))
-    >>> recon = FourierTransformReconstructor(aperture, "fried")
-    >>> recon
-    <FourierTransformReconstructor (10x10) filter='fried'>
-    >>> ys, xs = np.meshgrid(np.arange(10), np.arange(10))
-    >>> recon(xs, ys)
-    array([...])
-    
+        
+        >>> import numpy as np
+        >>> aperture = np.ones((10,10))
+        >>> recon = FourierTransformReconstructor(aperture, "fried")
+        >>> recon
+        <FourierTransformReconstructor (10x10) filter='fried'>
+        >>> ys, xs = np.meshgrid(np.arange(10), np.arange(10))
+        >>> recon(xs, ys)
+        array([...])
     
     
     """
@@ -155,7 +157,7 @@ class FourierTransformReconstructor(Reconstructor):
         
     @property
     def filter(self):
-        """The filter components."""
+        """The filter components, as a :class:`FTRFilter` tuple."""
         return FTRFilter(self.gx, self.gy, self.name)
         
     @property
@@ -165,7 +167,10 @@ class FourierTransformReconstructor(Reconstructor):
         
     @property
     def gx(self):
-        """The x filter"""
+        """The x spatial filter.
+        
+        :math:`G_{wx}` in the equation implemented in :meth:`apply_filter`.
+        """
         return self._gx
         
     @gx.setter
@@ -176,7 +181,10 @@ class FourierTransformReconstructor(Reconstructor):
         
     @property
     def gy(self):
-        """The y filter"""
+        """The y filter.
+        
+        :math:`G_{wy}` in the equation implemented in :meth:`apply_filter`.
+        """
         return self._gy
         
     @gy.setter
@@ -189,7 +197,7 @@ class FourierTransformReconstructor(Reconstructor):
     def ap(self):
         """The aperture, a boolean numpy array.
         
-        The aperture is used to compute tip and tilt removal from the Fourier Transform Reconstructor
+        The aperture is used to compute tip and tilt removal from the Fourier Transform Reconstructor.
         """
         return self._ap
         
@@ -205,7 +213,11 @@ class FourierTransformReconstructor(Reconstructor):
         
     @property
     def tt_mode(self):
-        """Tip/tilt management mode."""
+        """Tip/tilt management mode.
+        
+        Returns a string representation of the tip/tilt management mode, useful
+        for the representation of this object.
+        """
         if not self.manage_tt:
             return "unmanaged"
         elif self.manage_tt and not self.suppress_tt:
@@ -235,11 +247,19 @@ class FourierTransformReconstructor(Reconstructor):
         This term normalizes for the magnitude of the individual spatial
         filters. It is recomputed whenever the filters change, but it is
         otherwise computed only once for each set of filters.
+        
+        The equation used is
+        
+        .. math::
+            
+            |G_{wx}|^{2} + |G_{wy}|^2
+        
+        
         """
         if self._denominator is not None:
             return self._denominator
         self._denominator = (np.abs(self.gx)**2.0 + np.abs(self.gy)**2.0)
-        self._denominator[(self._denominator == 0.0)] = 1.0 #Fix non-hermetian parts.
+        self._denominator[(self._denominator == 0.0)] = 1.0 #Fix non-hermitian parts.
         return self._denominator
         
     def apply_filter(self, xs_ft, ys_ft):
@@ -271,9 +291,55 @@ class FourierTransformReconstructor(Reconstructor):
         return ((np.conj(self.gx) * xs_ft + np.conj(self.gy) * ys_ft)
                 / self.denominator)
         
-    def reconstruct(self, xs, ys):
+    def reconstruct(self, xs, ys, manage_tt=False, suppress_tt=False):
         """Use the Fourier transform and spatial filters to reconstruct an
         estimate of the phase.
+        
+        Instead of using this method directly, call the instnace itself
+        to ensure that settings are correctly obeyed.
+        
+        Parameters
+        ----------
+        xs : array_like
+            The x slopes
+        ys : array_like
+            The y slopes
+        manage_tt : bool
+            Whether to remove the tip/tilt from the slopes before reconstruction
+        suppress_tt : bool
+            If set, do not re-apply the tip tilt after reconstruction.
+        
+        Returns
+        -------
+        estimate : array_like
+            An estimate of the phase across all the points
+            where x and y slopes were measured.
+        
+        Notes
+        -----
+        This method serves as the implementation for :meth:`__call__`.
+        
+        """
+        if manage_tt:
+            xs, xt = remove_piston(self.ap, xs)
+            ys, yt = remove_piston(self.ap, ys)
+        
+        xs_ft = fftpack.fftn(xs)
+        ys_ft = fftpack.fftn(ys)
+        
+        # There is a factor of two here. This is applied because the normalization of the FFT in IDL is different from the one used here. See FFTNormalization.rst
+        est_ft = self.apply_filter(xs_ft, ys_ft) * 2.0
+        
+        estimate = np.real(fftpack.ifftn(est_ft))
+        
+        if manage_tt and not suppress_tt:
+            print("Re-applying tip/tilt [{},{}]".format(xt, yt))
+            estimate = apply_tiptilt(self.ap, estimate, xt, yt)
+        
+        return estimate
+        
+    def __call__(self, xs, ys):
+        """Perform the reconstruction.
         
         Parameters
         ----------
@@ -287,29 +353,9 @@ class FourierTransformReconstructor(Reconstructor):
         estimate : array_like
             An estimate of the phase across all the points
             where x and y slopes were measured.
-        
-        Notes
-        -----
-        This method serves as the implementation for :meth:`__call__`.
-        
         """
-        if self.manage_tt:
-            xs, xt = remove_piston(self.ap, xs)
-            ys, yt = remove_piston(self.ap, ys)
-        
-        xs_ft = fftpack.fftn(xs)
-        ys_ft = fftpack.fftn(ys)
-        
-        # There is a factor of two here. This is applied because the normalization of the FFT in IDL is different from the one used here. See FFTNormalization.rst
-        est_ft = self.apply_filter(xs_ft, ys_ft) * 2.0
-        
-        estimate = np.real(fftpack.ifftn(est_ft))
-        
-        if self.manage_tt and not self.suppress_tt:
-            print("Re-applying tip/tilt [{},{}]".format(xt, yt))
-            estimate = apply_tiptilt(self.ap, estimate, xt, yt)
-        
-        return estimate
+        return self.reconstruct(xs, ys, 
+            manage_tt=self.manage_tt, suppress_tt=self.suppress_tt)
         
     def invert(self, estimate):
         """Invert the estimate to produce slopes.

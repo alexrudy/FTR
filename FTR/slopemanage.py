@@ -6,45 +6,129 @@ import numpy as np
 import warnings
 
 from .ftr import FourierTransformReconstructor
+from .utils import remove_piston, apply_tiptilt
 
 __all__ = ['SlopeManagedFTR', 'slope_management', 'edge_extend']
 
 class SlopeManagedFTR(FourierTransformReconstructor):
-    """An FTR Reconstructor with slope management"""
+    """An FTR Reconstructor with slope management to remove the effects of finite apertures.
+    
+    This class is a direct subclass of
+    :class:`~FTR.ftr.FourierTransformReconstructor`, see that class for
+    detailed method documentation.
+    
+    Parameters
+    ----------
+    ap : array_like
+        The aperture of valid measurement points, which also defines the
+        reconstructor shape used to generate filters.
+    filter : string_like, optional
+        The filter name to use. If not provided, it is expected that the user
+        will initialize :attr:`gx` and :attr:`gy` themselves.
+    manage_tt : bool, optional
+        Remove tip and tilt from slopes before reconstruction, and re-apply
+        them after reconstruction. (default is to use ``suppress_tt``)
+    suppress_tt : bool, optional
+        Remove tip and tilt from slopes, and don't re-apply after
+        reconstruction. (default is False)
+    extend : bool, optional
+        Use the "edge extension" method rather than the "slope management"
+        method. The "slope management" method was shown by Poyneer [1]_ to
+        have better error properties.
+    
+    Notes
+    -----
+    
+    The Fourier transform reconstructor is described in the documentation for
+    :class:`~FTR.ftr.FourierTransformReconstructor`, which implements the pure
+    Fourier transform reconstructor. This subclass implements methods to correct
+    for finite aperture effects in the Fourier transform. 
+    
+    
+    References
+    ----------
+    
+    .. [1] Poyneer, L. A. Signal processing for high-precision wavefront
+       control in adaptive optics. (Thesis (Ph.D.) - University of California,
+       2007).
+    
+    Examples
+    --------
+    
+    Creating a generic reconstructor will result in an uninitialized filter::
+        
+        >>> import numpy as np
+        >>> aperture = np.ones((10,10))
+        >>> recon = SlopeManagedFTR(aperture)
+        >>> recon
+        <SlopeManagedFTR (10x10) filter='Unknown'>
+        
+    
+    You can create a reconstructor with a named filter::
+        
+        >>> import numpy as np
+        >>> aperture = np.ones((10,10))
+        >>> recon = SlopeManagedFTR(aperture, "fried")
+        >>> recon
+        <SlopeManagedFTR (10x10) filter='fried'>
+        >>> ys, xs = np.meshgrid(np.arange(10), np.arange(10))
+        >>> recon(xs, ys)
+        array([...])
+    
+    """
     
     _ap = None
     
-    def __init__(self, n, ap, filter=None, manage_tt=False, suppress_tt=None, extend=False):
-        super(SlopeManagedFTR, self).__init__(n=n, ap=ap, filter=filter, manage_tt=manage_tt, suppress_tt=suppress_tt)
+    def __init__(self, ap, filter=None, manage_tt=None, suppress_tt=None, extend=False):
+        super(SlopeManagedFTR, self).__init__(ap=ap, filter=filter, manage_tt=manage_tt, suppress_tt=suppress_tt)
         self.extend = bool(extend)
+    
+    def reconstruct(self, xs, ys, manage_tt=False, suppress_tt=False, extend=None):
+        """Use the Fourier transform and spatial filters to reconstruct an
+        estimate of the phase.
         
-    
-    @property
-    def ap(self):
-        """Aperture used for slope management."""
-        return self._ap
-    
-    def reconstruct(self, xs, ys):
-        """Reconstruct."""
-        if self.manage_tt:
-            xs, xt = remove_tilt(self.ap, xs)
-            ys, yt = remove_tilt(self.ap, ys)
-        if self.extend:
+        Instead of using this method directly, call the instnace itself
+        to ensure that settings are correctly obeyed.
+        
+        Parameters
+        ----------
+        xs : array_like
+            The x slopes
+        ys : array_like
+            The y slopes
+        manage_tt : bool
+            Whether to remove the tip/tilt from the slopes before reconstruction
+        suppress_tt : bool
+            If set, do not re-apply the tip tilt after reconstruction.
+        
+        Returns
+        -------
+        estimate : array_like
+            An estimate of the phase across all the points
+            where x and y slopes were measured.
+        
+        Notes
+        -----
+        This method serves as the implementation for :meth:`__call__`.
+        
+        """
+        if manage_tt:
+            xs, xt = remove_piston(self.ap, xs)
+            ys, yt = remove_piston(self.ap, ys)
+        
+        extend = extend if extend is not None else self.extend
+        if extend:
             xs, ys = edge_extend(self.ap, xs, ys)
         else:
-            xs, ys = slope_management(self.ap, xs, ys)
-        phi = super(SlopeManagedFTR, self).reconstruct(xs, ys)
-        if self.manage_tt and not self.suppress_tt:
-            return phi + (self.x * xt) + (self.y * yt)
+            xs, ys = _slope_management(self.ap, xs, ys)
+        
+        phi = super(SlopeManagedFTR, self).reconstruct(xs, ys, 
+            manage_tt=False, suppress_tt=False)
+        if manage_tt and not suppress_tt:
+            estimate = apply_tiptilt(self.ap, estimate, xt, yt)
         return phi
     
 
-def remove_tilt(ap, sl):
-    """Remove tip or tilt from slopes."""
-    tt = np.sum(sl * ap) / np.sum(ap)
-    sl_nt = sl - tt * ap
-    return (sl_nt, tt)
-    
 def _check_slopeargs(ap, xs, ys):
     """Check arguments to the slope management function, and prepare them."""
     ap = np.array(ap, dtype=np.int)
@@ -67,14 +151,35 @@ def slope_management(ap, xs, ys):
     """
     Slope management for the fast fourier transform.
     
-    :param ap: The aperture, as a boolean mask.
-    :param xs: The x slopes.
-    :param ys: The y slopes.
-    
     The slopes must be within an aperture that has space on the edges for correction.
     
+    Parameters
+    ----------
+    ap : array_like, boolean
+        The illuminated aperture of valid subapertures.
+    xs : array_like
+        The x slopes
+    ys : array_like
+        The y slopes
+    
+    
+    Returns
+    -------
+    xs_managed : array_like
+        The x slopes with the periodicity management applied.
+    ys_managed : array_like
+        The y slopes with the periodicity management applied.
+        
+    Raises
+    ------
+    ValueError :
+        Raised when the slopes grid is not adaquate for slope management.
+    
     """
-    ap, xs, ys = _check_slopeargs(ap, xs, ys)
+    return _slope_management(*_check_slopeargs(ap, xs, ys))
+    
+def _slope_management(ap, xs, ys):
+    """This method implements :func:`slope_management`, but without argument checking, useful for the reconstructor."""
     
     n = xs.shape[0]
     
@@ -92,26 +197,26 @@ def slope_management(ap, xs, ys):
     
     for j in range(n):
         if apr_sum[j] != 0:
-            loc = np.where(ap[:,j] != 0)[0]
+            loc = np.flatnonzero(ap[:,j] != 0)
             left = loc[0]
             right = loc[-1]
             
             if left == 0:
                 raise ValueError("Not enough space to edge correct, row {j} starts at k={k}".format(j=j, k=0))
-            if right == n:
+            if right == (n-1):
                 raise ValueError("Not enough space to edge correct, row {j} ends at k={k}".format(j=j, k=n))
             
-            ys_c[left-1, j] = - 0.5 * ysr_sum[j]
+            ys_c[left-1, j]  = -0.5 * ysr_sum[j]
             ys_c[right+1, j] = -0.5 * ysr_sum[j]
         
         if apc_sum[j] != 0:
-            loc = np.where(ap[j,:] != 0)[0]
+            loc = np.flatnonzero(ap[j,:] != 0)
             bottom = loc[0]
             top = loc[-1]
             
             if bottom == 0:
                 raise ValueError("Not enough space to edge correct, column {j} starts at k={k}".format(j=j, k=0))
-            if top == n:
+            if top == (n - 1):
                 raise ValueError("Not enough space to edge correct, column {j} ends at k={k}".format(j=j, k=n))
             
             xs_c[j, bottom-1] = -0.5 * xsc_sum[j]

@@ -34,6 +34,8 @@ class TestFourierTransformReconstructor(ReconstructorTestBase):
         ny, nx = shape
         phi_ft = complexmp(10.0, 2 * np.pi * np.random.random(shape))
         phi_ft[0,0] = 0.0
+        
+        # We zero everything beyond nyquist, so that we can make it hermitian.
         phi_ft[ny//2:,:] = 0.0
         phi_ft[:,nx//2:] = 0.0
         
