@@ -67,7 +67,8 @@ class SlopeManagedFTR(FourierTransformReconstructor):
     You can create a reconstructor with a named filter::
         
         >>> import numpy as np
-        >>> aperture = np.ones((10,10))
+        >>> from FTR.utils import circle_aperture
+        >>> aperture = circle_aperture((10, 10), r=3)
         >>> recon = SlopeManagedFTR(aperture, "fried")
         >>> recon
         <SlopeManagedFTR (10x10) filter='fried'>
