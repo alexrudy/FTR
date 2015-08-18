@@ -448,14 +448,16 @@ class FourierTransformReconstructor(Reconstructor):
         --------
         
         You can create a reconstructor with one filter::
-        >>> import numpy as np
-        >>> aperture = np.ones((10,10))
-        >>> recon = FourierTransformReconstructor(aperture, "fried")
-        >>> recon
-        <FourierTransformReconstructor (10x10) filter='fried'>
-        >>> recon.use("mod_hud")
-        >>> recon
-        <FourierTransformReconstructor (10x10) filter='mod_hud'>
+            
+            >>> import numpy as np
+            >>> aperture = np.ones((10,10))
+            >>> recon = FourierTransformReconstructor(aperture, "fried")
+            >>> recon
+            <FourierTransformReconstructor (10x10) filter='fried'>
+            >>> recon.use("mod_hud")
+            >>> recon
+            <FourierTransformReconstructor (10x10) filter='mod_hud'>
+            
         
         """
         self.gx, self.gy, self._filtername = self._REGISTRY[filter](self.shape)
