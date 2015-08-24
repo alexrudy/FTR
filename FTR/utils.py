@@ -84,7 +84,26 @@ def remove_tiptilt(ap, phi):
     return (phi_ntt, tilt, tip)
     
 def apply_tiptilt(ap, phi, tt_x, tt_y):
-    """Apply tip and tilt to a phase."""
+    """Apply tip and tilt to a phase.
+    
+    Parameters
+    ----------
+    ap : array_like
+        Aperture of valid phase points.
+    phi : array_like
+        Phase grid.
+    tt_x : float
+        X tip
+    tt_y : float
+        Y tip
+    
+    Returns
+    -------
+    phi_tt : array_like
+        The phase, with tip and tilt terms added.
+    
+    
+    """
     y, x = shapegrid(phi.shape)
     
     x = ap * ((x * ap) - (x * ap).sum() / ap.sum())
@@ -94,17 +113,71 @@ def apply_tiptilt(ap, phi, tt_x, tt_y):
     return phi_tt
     
 def circle_aperture(shape, r):
-    """Create a circle aperture."""
+    """Create a circle aperture.
+    
+    The aperture is a integer 2-d numpy array,
+    with ones where the aperture is valid.
+    
+    Parameters
+    ----------
+    shape : tuple of ints
+        The shape of the full aperture.
+    r : float
+        Radius of the inner circle within the aperture.
+    
+    Returns
+    -------
+    ap : array_like
+        An integer numpy array, 1 where there is a valid
+        measurement point, and 0 where it is invalid.
+    
+    """
     y, x = shapegrid(shape)
     return ((x**2 + y**2) < r**2).astype(np.int)
     
 def fftgrid(shape, scale=1.0/(2.0*np.pi)):
-    """FFT Grid"""
+    """Make a Fourier grid of x and y frequencies.
+    
+    This makes a grid of f_x and f_y points, by default in
+    angular frequency.
+    
+    Parameters
+    ----------
+    shape : tuple of ints
+        The desired shape of the Fourier grid.
+    scale : float, optional
+        The sampling scale for the FFT frequencies. Defaults to :math:`1/2\pi`,
+        the default Fourier frequency sampling in angular frequency units.
+        
+    Returns
+    -------
+    fy : array_like
+        The y Fourier frequencies.
+    fx : array_like
+        The x Fourier frequencies.
+    
+    """
     ff = [np.fft.fftfreq(s, scale) for s in reversed(shape)]
     return tuple(reversed(np.meshgrid(*ff)))
     
 def shapegrid(shape, centered=True):
-    """A grid shaped for numpy."""
+    """Make a centered index grid of a specific shape.
+    
+    Parameters
+    ----------
+    shape : tuple of ints
+        The desired shape of the grid.
+    centered : boolean, optional
+        Determine whether the grid is centered.
+    
+    Returns
+    -------
+    yy : array_like
+        The y indicies
+    xx : array_like
+        The x indicies
+    
+    """
     if centered:
         ii = [ np.arange(s) - (s / 2.0) for s in reversed(shape) ]
     else:
@@ -116,7 +189,7 @@ def shapestr(shape):
     return "({0})".format("x".join("{0:d}".format(s) for s in shape))
     
 def is_hermitian(matrix):
-    """docstring for is_hermitian"""
+    """Determine if a matrix is hermitian."""
     matrix = np.asmatrix(matrix, dtype=np.complex)
     if matrix.shape != tuple(reversed(matrix.shape)):
         return False
