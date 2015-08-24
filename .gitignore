@@ -51,3 +51,6 @@ distribute-*.tar.gz
 
 # Jupyter Notebooks
 .ipynb_checkpoints/*
+
+# LLNL Code, not for release
+idlftr/*

@@ -3,7 +3,7 @@
 
 from FTR import FourierTransformReconstructor
 import FTR.ftr
-from FTR.utils import circle_aperture, shapegrid, ignoredivide, complexmp
+from FTR.utils import circle_aperture, shapegrid, ignoredivide, complexmp, make_hermitian
 import numpy as np
 import numpy.fft
 import argparse
@@ -41,18 +41,21 @@ def prepare_fmode_grids(n):
     ap = make_aperture(n)
     phi_ft = complexmp(10.0, 2 * np.pi * np.random.random((n, n)))
     phi_ft = (phi_ft + np.triu(phi_ft.T)).T
+    phi_ft = make_hermitian(phi_ft)
     phi_ft[0,:] = 0.0
     phi_ft[:,0] = 0.0
     phi_ft[-1,:] = 0.0
     phi_ft[:,-1] = 0.0
     plt.figure()
     plt.subplot(121)
-    plt.imshow(np.real(phi_ft))
+    plt.imshow(np.real(phi_ft), cmap='hot')
     phi_ft = np.fft.ifftshift(phi_ft)
     plt.subplot(122)
-    plt.imshow(np.real(phi_ft))
+    plt.imshow(np.real(phi_ft), cmap='hot')
+    # This should remove waffle!
     phi_ft[0,0] = 0.0
     phi = np.abs(np.fft.ifftn(phi_ft))
+    phi[0,0] = 0.0
     ys, xs = np.gradient(phi)
     return ap, phi, ys, xs
 

@@ -14,9 +14,15 @@ import matplotlib.gridspec as mgrid
 
 from FTR.utils import ignoredivide
 
-def fftmag(a):
+def fftmag(a, piston=False, waffle=False):
     """FFT magnitude."""
-    return np.real(np.abs(np.fft.fftshift(np.fft.fftn(np.asarray(a)))))
+    a_ft = np.real(np.abs(np.fft.fftn(np.asarray(a))))
+    if not piston:
+        a_ft[0,0] = 0.0
+    a_ft = np.fft.fftshift(a_ft)
+    if not waffle:
+        a_ft[0,0] = 0.0
+    return a_ft
 
 def filtermag(a):
     """Filter FFT magnitude."""
