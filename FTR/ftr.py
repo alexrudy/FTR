@@ -333,7 +333,7 @@ class FourierTransformReconstructor(Reconstructor):
         estimate = np.real(fftpack.ifftn(est_ft))
         
         if manage_tt and not suppress_tt:
-            print("Re-applying tip/tilt [{},{}]".format(xt, yt))
+            # print("Re-applying tip/tilt [{},{}]".format(xt, yt))
             estimate = apply_tiptilt(self.ap, estimate, xt, yt)
         
         return estimate

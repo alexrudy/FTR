@@ -123,11 +123,11 @@ class SlopeManagedFTR(FourierTransformReconstructor):
         else:
             xs, ys = _slope_management(self.ap, xs, ys)
         
-        phi = super(SlopeManagedFTR, self).reconstruct(xs, ys, 
+        estimate = super(SlopeManagedFTR, self).reconstruct(xs, ys, 
             manage_tt=False, suppress_tt=False)
         if manage_tt and not suppress_tt:
             estimate = apply_tiptilt(self.ap, estimate, xt, yt)
-        return phi
+        return estimate
     
 
 def _check_slopeargs(ap, xs, ys):
