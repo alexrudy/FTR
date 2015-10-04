@@ -20,7 +20,7 @@ With ``pip``, you can install this package::
 Status reports for developers
 -----------------------------
 
-.. image:: https://travis-ci.org/alexrudy/FTR.png?branch=master
+.. image:: https://travis-ci.org/alexrudy/FTR.svg?branch=master
     :target: https://travis-ci.org/alexrudy/FTR
     :alt: Test Status
 
