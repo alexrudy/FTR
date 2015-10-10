@@ -58,7 +58,8 @@ class SlopeManagedFTR(FourierTransformReconstructor):
     Creating a generic reconstructor will result in an uninitialized filter::
         
         >>> import numpy as np
-        >>> aperture = np.ones((10,10))
+        >>> aperture = np.zeros((10,10), dtype=np.bool)
+        >>> aperture[1:-2,1:-2] = True
         >>> recon = SlopeManagedFTR(aperture)
         >>> recon
         <SlopeManagedFTR (10x10) filter='Unknown'>
@@ -67,8 +68,8 @@ class SlopeManagedFTR(FourierTransformReconstructor):
     You can create a reconstructor with a named filter::
         
         >>> import numpy as np
-        >>> from FTR.utils import circle_aperture
-        >>> aperture = circle_aperture((10, 10), r=3)
+        >>> aperture = np.zeros((10,10), dtype=np.bool)
+        >>> aperture[1:-2,1:-2] = True
         >>> recon = SlopeManagedFTR(aperture, "fried")
         >>> recon
         <SlopeManagedFTR (10x10) filter='fried'>
