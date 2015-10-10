@@ -458,7 +458,7 @@ class FourierTransformReconstructor(Reconstructor):
         <FourierTransformReconstructor (10x10) filter='mod_hud'>
         
         """
-        self.gx, self.gy, self._filtername = self._REGISTRY[filter](self.shape)
+        self.gx, self.gy, self._filtername = self.get(filter, self.shape)
         
     @classmethod
     def get(cls, filter, shape):
