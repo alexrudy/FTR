@@ -30,9 +30,6 @@ ftr_plan
 ftr_plan_reconstructor(int nx, int ny, double *sx, double *sy, double *est);
 
 void
-ftr_allocate_fftw_plans(ftr_plan recon);
-
-void
 ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy);
 
 void

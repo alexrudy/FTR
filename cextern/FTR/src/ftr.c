@@ -10,6 +10,12 @@
 #include <stdlib.h>
 #define FTR_PRECOMUTE FFTW_ESTIMATE
 
+/* 
+This is a private method, decalared here for use inside
+ftr_plan_reconstructor.
+*/
+void ftr_allocate_fftw_plans(ftr_plan recon);
+
 ftr_plan ftr_plan_reconstructor(int nx, int ny, double *sx, double *sy, double *est) {
   ftr_plan recon;
   recon = malloc(sizeof(struct ftr_plan_s));
