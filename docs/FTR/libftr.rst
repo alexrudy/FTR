@@ -1,6 +1,7 @@
 .. highlight:: c
 
 .. _libftr:
+
 *********************************
 C implementation of FTR in libFTR
 *********************************
