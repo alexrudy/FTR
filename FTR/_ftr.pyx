@@ -60,16 +60,14 @@ cdef class CFTRBase:
         
         self.sx[...] = sx
         self.sy[...] = sy
-        print("Calling ftr_reconstruct...")
         ftr_reconstruct(self._plan)
-        print("Returing results...")
         return self.est
         
     cdef void update_filters(self):
         ftr_set_filter(self._plan, <complex *>np.PyArray_DATA(self._gx), <complex *>np.PyArray_DATA(self._gy))
         
     def __repr__(self):
-        return "<CFTRBase {:s}>".format(shapestr(self.shape))
+        return "<CFTRBase {0:s}>".format(shapestr(self.shape))
         
         
     def __call__(self, sx, sy):
