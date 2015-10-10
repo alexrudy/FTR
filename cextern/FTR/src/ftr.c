@@ -42,11 +42,12 @@ ftr_allocate_fftw_plans(ftr_plan recon) {
 void
 ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy) {
   
+  size_t i;
   double denom;
   recon->gx_ft = gx;
   recon->gy_ft = gy;
   
-  for(size_t i = 0; i < (recon->nx * recon->ny); ++i)
+  for(i = 0; i < (recon->nx * recon->ny); ++i)
   {
     denom = pow(cabs(recon->gx_ft[i]), 2.0) + pow(cabs(recon->gy_ft[i]),2.0);
     recon->gd_ft[i] = (denom > 0.0) ? (1.0 / denom) : 1.0;
@@ -56,12 +57,13 @@ ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy) {
 void
 ftr_reconstruct(ftr_plan recon) {
   int nn;
+  size_t i;
   nn = (recon->nx * recon->ny);
   
   fftw_execute(recon->p_sx);
   fftw_execute(recon->p_sy);
   
-  for(size_t i = 0; i < nn; ++i)
+  for(i = 0; i < nn; ++i)
   {
     recon->est_ft[i] = (conj(recon->gx_ft[i]) * recon->sx_ft[i] + conj(recon->gy_ft[i]) * recon->sy_ft[i]) * recon->gd_ft[i];
   }
