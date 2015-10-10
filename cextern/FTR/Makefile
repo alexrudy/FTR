@@ -7,25 +7,26 @@
 #
 
 LDFLAGS = -g -O2 -lfftw3 -lm -L /opt/local/lib
-OBJECTS = ftr.o ftr_example.o
-TARGET = libftr.so ftr-example
 BUILDDIR = build/
 SRCDIR = src/
+LIBDIR = lib/
 EXAMPLE = example/
+TARGET = $(LIBDIR)libftr.so ftr-example
+OBJECTS = $(BUILDDIR)ftr.o $(BUILDDIR)slopemanage.o
 
 $(BUILDDIR)%.o : $(SRCDIR)%.c $(SRCDIR)%.h
 	@mkdir -p $(BUILDDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILDDIR)%.o : $(EXAMPLE)%.c
-	@mkdir -p $(BUILDDIR)
+$(EXAMPLE)%.o : $(EXAMPLE)%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-lib%.so : $(BUILDDIR)%.o
+$(LIBDIR)lib%.so : $(OBJECTS)
+	@mkdir -p $(LIBDIR)
 	$(CC) $(LDFLAGS) -shared -o $@ $<
 	
-ftr-example : $(BUILDDIR)ftr_example.o libftr.so
-	$(CC) $(LDFLAGS) -L. -lftr -o $@ $<
+ftr-example : $(EXAMPLE)ftr_example.o $(LIBDIR)libftr.so
+	$(CC) $(LDFLAGS) -L$(LIBDIR) -lftr -o $@ $<
 
 all: $(TARGET)
 
