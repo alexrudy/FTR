@@ -1,5 +1,8 @@
+.. highlight:: c
+
+.. _libftr:
 *********************************
-C implementation of FTR in FTRlib
+C implementation of FTR in libFTR
 *********************************
 
 This is a library implementation of FTR using pure C, suitable for inclusion in additional code.
@@ -9,7 +12,7 @@ and does not provide functions to generate filters out of the box. It is designe
 
 The design is meant to mimic the design of FFTW plans. This was chosen because FTRlib uses FFTW to implement the fast Fourier transform, making the plan architecture a reasonable choice.
 
-Integrating FTRlib
+Integrating libFTR
 ==================
 
 If you have a pointer to x slopes, a pointer to y slopes, and you want to create a function which does the reconstruction once do::
