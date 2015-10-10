@@ -94,7 +94,7 @@ void slope_management_execute(sm_plan plan, double * sx, double * sy)
     
     for(i = 0; i < nn; ++i)
     {
-        if(i < ny && plan->row_any[i])
+        if(i < ny && plan->row_any[i] == 1)
         {
             // Sum the row, so we can use it to edge correct.
             row_sum = 0.0;
@@ -105,7 +105,7 @@ void slope_management_execute(sm_plan plan, double * sx, double * sy)
             (sy + (i * nx))[plan->left[i] - 1] = -0.5 * row_sum;
             (sy + (i * nx))[plan->right[i] + 1] = -0.5 * row_sum;
         }
-        if(i < nx && plan->col_any[i])
+        if(i < nx && plan->col_any[i] == 1)
         {
             // Sum the column, so we can use it to edge correct.
             col_sum = 0.0;
