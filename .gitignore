@@ -51,3 +51,7 @@ distribute-*.tar.gz
 
 # Jupyter Notebooks
 .ipynb_checkpoints/*
+
+# Ignore IDL code, because we aren't sure if we can publish it.
+# (in fact, probably can't!)
+idlftr/*
