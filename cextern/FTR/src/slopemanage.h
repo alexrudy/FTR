@@ -6,6 +6,9 @@
 //  Copyright 2015 Alexander Rudy. All rights reserved.
 //
 
+#ifndef SLOPEMANAGE_H_18A446D7
+#define SLOPEMANAGE_H_18A446D7
+
 typedef struct slope_management_plan_s {
     int nx;
     int ny;
@@ -18,3 +21,5 @@ typedef struct slope_management_plan_s {
 sm_plan slope_management_plan(int nx, int ny, int *ap);
 void slope_management_execute(sm_plan plan, double * sx, double * sy);
 void slope_management(int nx, int ny, int *ap, double * sx, double * sy);
+void slope_management_free(sm_plan);
+#endif /* end of include guard: SLOPEMANAGE_H_18A446D7 */

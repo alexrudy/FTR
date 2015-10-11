@@ -8,6 +8,7 @@
 
 #include "slopemanage.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 //TODO: This function should provide error checking for invalid apertures.
 sm_plan slope_management_plan(int nx, int ny, int *ap)
@@ -52,9 +53,19 @@ sm_plan slope_management_plan(int nx, int ny, int *ap)
             plan->row_any[r] = 1;
         }
     }
+    
+    plan->col_any = malloc(sizeof(int) * nx);
+    plan->top = malloc(sizeof(int) * nx);
+    plan->bottom = malloc(sizeof(int) * nx);
+    
     for(c = 0; c < nx; ++c)
     {
         column = (ap + c);
+        // Initialize these values so that we can see if we've already set them elsewhere.
+        plan->top[c] = -1;
+        plan->bottom[c] = -1;
+        plan->col_any[c] = 0;
+        
         for(r = 1; r < ny; ++r)
         {
             cell = *(column + (r * nx));
@@ -73,20 +84,17 @@ sm_plan slope_management_plan(int nx, int ny, int *ap)
         }
     }
     
-    plan->x_col_sum = malloc(sizeof(double) * nx);
-    plan->y_row_sum = malloc(sizeof(double) * ny);
-    
     return plan;
 }
 
 void slope_management_execute(sm_plan plan, double * sx, double * sy)
 {
     size_t i, j;
-    int nn, nx, ny;
+    int nn, nx, ny, n;
     double row_sum, col_sum;
     
     // nn = max(nx, ny)
-    nn = plan->nx < plan->ny ? plan->nx : plan->ny;
+    nn = plan->nx > plan->ny ? plan->nx : plan->ny;
     
     // Unpack, but this could be optimized!
     nx = plan->nx;
@@ -100,7 +108,8 @@ void slope_management_execute(sm_plan plan, double * sx, double * sy)
             row_sum = 0.0;
             for(j = 0; j < nx; ++j)
             {
-                row_sum += *(sy + (i * nx) + j);
+                n = (i * nx) + j;
+                row_sum += sy[n] * plan->ap[n];
             }
             (sy + (i * nx))[plan->left[i] - 1] = -0.5 * row_sum;
             (sy + (i * nx))[plan->right[i] + 1] = -0.5 * row_sum;
@@ -111,7 +120,8 @@ void slope_management_execute(sm_plan plan, double * sx, double * sy)
             col_sum = 0.0;
             for(j = 0; j < ny; ++j)
             {
-                col_sum += *(sy + (i * nx) + j);
+                n = (i * nx) + j;
+                col_sum += sx[n] * plan->ap[n];
             }
             (sx + (i * nx))[plan->top[i] - 1] = -0.5 * col_sum;
             (sx + (i * nx))[plan->bottom[i] + 1] = -0.5 * col_sum;
@@ -127,4 +137,22 @@ void slope_management(int nx, int ny, int *ap, double * sx, double * sy)
     sm_plan plan;
     plan = slope_management_plan(nx, ny, ap);
     slope_management_execute(plan, sx, sy);
+}
+
+void slope_management_free(sm_plan plan)
+{
+    // Free row variables.
+    free(plan->row_any);
+    free(plan->left);
+    free(plan->right);
+    
+    // Free column variables.
+    free(plan->col_any);
+    free(plan->top);
+    free(plan->bottom);
+    
+    // Free the plan itself.
+    free(plan);
+    
+    return;
 }
