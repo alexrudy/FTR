@@ -77,3 +77,19 @@ ftr_reconstruct(ftr_plan recon) {
   fftw_execute(recon->p_est);
 }
 
+void
+ftr_free(ftr_plan recon)
+{
+    fftw_destroy_plan(recon->p_sx);
+    fftw_destroy_plan(recon->p_sy);
+    fftw_destroy_plan(recon->p_est);
+    
+    fftw_free(recon->est_ft);
+    fftw_free(recon->sx_ft);
+    fftw_free(recon->sy_ft);
+    fftw_free(recon->gd_ft);
+    
+    free(recon);
+    return;
+}
+

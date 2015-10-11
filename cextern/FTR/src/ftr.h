@@ -35,5 +35,8 @@ ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy);
 void
 ftr_reconstruct(ftr_plan recon);
 
+void
+ftr_free(ftr_plan recon);
+
 #endif /* end of include guard: FTR_H_D3963E38 */
 
