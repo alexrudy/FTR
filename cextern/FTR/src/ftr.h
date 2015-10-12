@@ -15,15 +15,7 @@
 #include <fftw3.h>
 
 // Type definitions
-typedef struct ftr_plan_s {
-  int nx, ny;
-  double *sx, *sy, *est;
-  fftw_complex *sx_ft, *sy_ft, *est_ft;
-  fftw_complex *gx_ft, *gy_ft, *gd_ft;
-  fftw_plan p_sx;  // Forward x slope transform.
-  fftw_plan p_sy;  // Forward y slope transform.
-  fftw_plan p_est; // Inverse phase transform.
-} * ftr_plan;
+typedef struct ftr_plan_s * ftr_plan;
 
 // Functions
 ftr_plan
@@ -36,7 +28,10 @@ void
 ftr_reconstruct(ftr_plan recon);
 
 void
-ftr_free(ftr_plan recon);
+ftr_destroy(ftr_plan recon);
+
+void 
+ftr_estimate(ftr_plan recon);
 
 #endif /* end of include guard: FTR_H_D3963E38 */
 
