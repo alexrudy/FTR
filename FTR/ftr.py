@@ -29,6 +29,7 @@ from astropy.utils import lazyproperty
 
 # Local imports
 from .base import Reconstructor
+from ._ftr import CFTRBase
 from .utils import (complexmp, ignoredivide, remove_piston, remove_tiptilt, 
     fftgrid, shapegrid, shapestr, apply_tiptilt)
 
@@ -333,7 +334,6 @@ class FourierTransformReconstructor(Reconstructor):
         estimate = np.real(fftpack.ifftn(est_ft))
         
         if manage_tt and not suppress_tt:
-            print("Re-applying tip/tilt [{},{}]".format(xt, yt))
             estimate = apply_tiptilt(self.ap, estimate, xt, yt)
         
         return estimate
@@ -487,6 +487,25 @@ class FourierTransformReconstructor(Reconstructor):
     def filters(cls):
         """Return the list of registered filter names."""
         return cls._REGISTRY.keys()
+
+class FastFTReconstructor(CFTRBase, FourierTransformReconstructor):
+    """A fourier transform reconstructor which implements the reconstruct
+    method using libftr."""
+    
+    def reconstruct(self, xs, ys):
+        """Override reconstruction to force compliance with TT management, etc."""
+        if self.manage_tt:
+            xs, xt = remove_piston(self.ap, xs)
+            ys, yt = remove_piston(self.ap, ys)
+        
+        estimate = super(FastFTReconstructor, self).reconstruct(xs, ys)
+        
+        if self.manage_tt and not self.suppress_tt:
+            estimate = apply_tiptilt(self.ap, estimate, xt, yt)
+        
+        return estimate
+    
+
 
 @FourierTransformReconstructor.register("hud")
 def hud_filter(shape):
