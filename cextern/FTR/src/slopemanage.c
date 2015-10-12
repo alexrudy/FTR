@@ -23,6 +23,7 @@ sm_plan slope_management_plan(int nx, int ny, int *ap)
     plan->ap = ap;
     plan->nx = nx;
     plan->ny = ny;
+    plan->nn = plan->nx > plan->ny ? plan->nx : plan->ny;
     
     /* Figure out what is going on with the rows */
     plan->row_any = malloc(sizeof(int) * ny);
@@ -90,41 +91,34 @@ sm_plan slope_management_plan(int nx, int ny, int *ap)
 void slope_management_execute(sm_plan plan, double * sx, double * sy)
 {
     size_t i, j;
-    int nn, nx, ny, n;
+    int n;
     double row_sum, col_sum;
     
-    // nn = max(nx, ny)
-    nn = plan->nx > plan->ny ? plan->nx : plan->ny;
-    
-    // Unpack, but this could be optimized!
-    nx = plan->nx;
-    ny = plan->ny;
-    
-    for(i = 0; i < nn; ++i)
+    for(i = 0; i < plan->nn; ++i)
     {
-        if(i < ny && plan->row_any[i] == 1)
+        if(i < plan->ny && plan->row_any[i] == 1)
         {
             // Sum the row, so we can use it to edge correct.
             row_sum = 0.0;
-            for(j = 0; j < nx; ++j)
+            for(j = 0; j < plan->nx; ++j)
             {
-                n = (i * nx) + j;
+                n = (i * plan->nx) + j;
                 row_sum += sy[n] * plan->ap[n];
             }
-            (sy + (i * nx))[plan->left[i] - 1] = -0.5 * row_sum;
-            (sy + (i * nx))[plan->right[i] + 1] = -0.5 * row_sum;
+            (sy + (i * plan->nx))[plan->left[i] - 1] = -0.5 * row_sum;
+            (sy + (i * plan->nx))[plan->right[i] + 1] = -0.5 * row_sum;
         }
-        if(i < nx && plan->col_any[i] == 1)
+        if(i < plan->nx && plan->col_any[i] == 1)
         {
             // Sum the column, so we can use it to edge correct.
             col_sum = 0.0;
-            for(j = 0; j < ny; ++j)
+            for(j = 0; j < plan->ny; ++j)
             {
-                n = (i * nx) + j;
+                n = (j * plan->nx) + i;
                 col_sum += sx[n] * plan->ap[n];
             }
-            (sx + (i * nx))[plan->top[i] - 1] = -0.5 * col_sum;
-            (sx + (i * nx))[plan->bottom[i] + 1] = -0.5 * col_sum;
+            (sx + (i * plan->nx))[plan->top[i] - 1] = -0.5 * col_sum;
+            (sx + (i * plan->nx))[plan->bottom[i] + 1] = -0.5 * col_sum;
         }
     }
     return;
@@ -137,9 +131,10 @@ void slope_management(int nx, int ny, int *ap, double * sx, double * sy)
     sm_plan plan;
     plan = slope_management_plan(nx, ny, ap);
     slope_management_execute(plan, sx, sy);
+    slope_management_destroy(plan);
 }
 
-void slope_management_free(sm_plan plan)
+void slope_management_destroy(sm_plan plan)
 {
     // Free row variables.
     free(plan->row_any);

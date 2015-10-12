@@ -12,6 +12,7 @@
 typedef struct slope_management_plan_s {
     int nx;
     int ny;
+    int nn;
     int *row_any, *left, *right;
     int *col_any, *top, *bottom;
     double *y_row_sum, *x_col_sum;
@@ -21,5 +22,5 @@ typedef struct slope_management_plan_s {
 sm_plan slope_management_plan(int nx, int ny, int *ap);
 void slope_management_execute(sm_plan plan, double * sx, double * sy);
 void slope_management(int nx, int ny, int *ap, double * sx, double * sy);
-void slope_management_free(sm_plan);
+void slope_management_destroy(sm_plan);
 #endif /* end of include guard: SLOPEMANAGE_H_18A446D7 */
