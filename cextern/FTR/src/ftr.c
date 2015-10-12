@@ -10,18 +10,40 @@
 #include <stdlib.h>
 #define FTR_PRECOMUTE FFTW_ESTIMATE
 
+struct ftr_plan_s {
+  int nx, ny, nn, nft, nf;
+  int *ift, *iconj;
+  double *sx, *sy, *est;
+  fftw_complex *sx_ft, *sy_ft, *est_ft;
+  fftw_complex *gx_ft, *gy_ft, *gd_ft;
+  fftw_plan p_sx;  // Forward x slope transform.
+  fftw_plan p_sy;  // Forward y slope transform.
+  fftw_plan p_est; // Inverse phase transform.
+};
+
 /* 
 This is a private method, decalared here for use inside
 ftr_plan_reconstructor.
 */
 void ftr_allocate_fftw_plans(ftr_plan recon);
 
-ftr_plan ftr_plan_reconstructor(int nx, int ny, double *sx, double *sy, double *est) {
+ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *est) {
+  size_t i;
+  int x, y, io, nfo;
   ftr_plan recon;
   recon = malloc(sizeof(struct ftr_plan_s));
   /* Dimensions of the arrays. */
   recon->nx = nx;
   recon->ny = ny;
+  recon->nn = nx * ny;
+  recon->nf = (ny / 2) + 1;
+  recon->nft = nx * recon->nf;
+  nfo = recon->nx % 2 == 0 ? recon->nf - 1 : recon->nf;
+  
+  
+  /* Index array */
+  recon->ift = malloc(sizeof(int) * recon->nn);
+  recon->iconj = malloc(sizeof(int) * recon->nn);
   
   /* Input and output arrays. */
   recon->sx = sx;
@@ -29,10 +51,42 @@ ftr_plan ftr_plan_reconstructor(int nx, int ny, double *sx, double *sy, double *
   recon->est = est;
   
   /* Complex data arrays which are allocated but not initialized. */
-  recon->est_ft = fftw_malloc(sizeof(fftw_complex) * nx * ny);
-  recon->sx_ft  = fftw_malloc(sizeof(fftw_complex) * nx * ny);
-  recon->sy_ft  = fftw_malloc(sizeof(fftw_complex) * nx * ny);
-  recon->gd_ft  = fftw_malloc(sizeof(fftw_complex) * nx * ny);
+  recon->est_ft = fftw_malloc(sizeof(fftw_complex) * recon->nn);
+  recon->sx_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
+  recon->sy_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
+  recon->gd_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
+  
+  for(i = 0; i < recon->nn; ++i)
+  {
+    recon->ift[i] = -1;
+  }
+  /*
+  Create the indexing arrays for unpacking complex transform results (which are hermetian)
+  TODO: This might not matter, since the other direction proceeds to ignore it anyways!
+  */
+  for(i = 0; i < recon->nft; ++i)
+  {
+    y = i / recon->nf;
+    x = i % recon->nf;
+    io = (y * recon->nx) + x;
+    
+    recon->ift[io] = i;
+    recon->iconj[io] = 0;
+    
+    if(y == 0 && x > 0 && x < nfo)
+    {
+      io = (recon->nx - x);
+      recon->ift[io] = i;
+      recon->iconj[io] = 1;
+    }
+    if(y > 0 && x > 0 && x < nfo)
+    {
+      io = (recon->nx - x) + ((recon->ny - y) * recon->nx);
+      recon->ift[io] = i;
+      recon->iconj[io] = 1;
+      
+    }
+  }
   
   ftr_allocate_fftw_plans(recon);
   return recon;
@@ -53,10 +107,10 @@ ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy) {
   recon->gx_ft = gx;
   recon->gy_ft = gy;
   
-  for(i = 0; i < (recon->nx * recon->ny); ++i)
+  for(i = 0; i < recon->nn; ++i)
   {
-    denom = pow(cabs(recon->gx_ft[i]), 2.0) + pow(cabs(recon->gy_ft[i]),2.0);
-    recon->gd_ft[i] = (denom > 0.0) ? (1.0 / denom) : 1.0;
+    denom = (cpow(cabs(recon->gx_ft[i]), 2.0) + cpow(cabs(recon->gy_ft[i]), 2.0)) * (fftw_complex)(recon->nn / 2.0);
+    recon->gd_ft[i] = (denom > 0.0) ? (1.0 / denom) : 1.0 + 0.0 * I;
   }
 }
 
@@ -94,6 +148,9 @@ ftr_destroy(ftr_plan recon)
     fftw_free(recon->sx_ft);
     fftw_free(recon->sy_ft);
     fftw_free(recon->gd_ft);
+    
+    free(recon->ift);
+    free(recon->iconj);
     
     free(recon);
     return;
