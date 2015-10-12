@@ -1,3 +1,5 @@
+.. _slopemanagement:
+
 ****************************
 Slope Periodicity Management
 ****************************
