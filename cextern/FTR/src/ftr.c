@@ -62,23 +62,29 @@ ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy) {
 
 void
 ftr_reconstruct(ftr_plan recon) {
-  int nn;
-  size_t i;
-  nn = (recon->nx * recon->ny);
   
   fftw_execute(recon->p_sx);
   fftw_execute(recon->p_sy);
-  
-  for(i = 0; i < nn; ++i)
-  {
-    recon->est_ft[i] = (conj(recon->gx_ft[i]) * recon->sx_ft[i] + conj(recon->gy_ft[i]) * recon->sy_ft[i]) * recon->gd_ft[i];
-  }
-
+  ftr_estimate(recon);
   fftw_execute(recon->p_est);
 }
 
+void ftr_estimate(ftr_plan recon) {
+  size_t i, j;
+  for(i = 0; i < recon->nn; ++i)
+  {
+    if(recon->iconj[i] == 0)
+    {
+      recon->est_ft[i] = (conj(recon->gx_ft[recon->ift[i]]) * recon->sx_ft[i] + conj(recon->gy_ft[recon->ift[i]]) * recon->sy_ft[i]) * recon->gd_ft[i];
+    }else{
+      recon->est_ft[i] = (conj(recon->gx_ft[recon->ift[i]]) * conj(recon->sx_ft[i]) + conj(recon->gy_ft[recon->ift[i]]) * conj(recon->sy_ft[i])) * recon->gd_ft[i];
+    }
+  }
+  return;
+}
+
 void
-ftr_free(ftr_plan recon)
+ftr_destroy(ftr_plan recon)
 {
     fftw_destroy_plan(recon->p_sx);
     fftw_destroy_plan(recon->p_sy);
