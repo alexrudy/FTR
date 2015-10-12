@@ -58,13 +58,20 @@ int main (int argc, char const *argv[])
     int nx = 10;
     int ny = 10;
     int nn = nx * ny;
-    int iters = 10000;
+    int iters;
     double *sx, *sy, *est;
     int *ap;
     fftw_complex *gx, *gy;
     ftr_plan plan;
     sm_plan manage_plan;
     
+    if(argc > 0)
+    {
+      iters = (int)atof(argv[1]);
+    }else{
+      iters = 1e5;
+    }
+    printf("Conducting %d iterations.\n", iters);
     printf("Allocating...\n");
     
     sx = malloc(sizeof(double) * nn);
@@ -115,18 +122,19 @@ int main (int argc, char const *argv[])
         {
             slopemanage = nanoseconds(t_start, t_slopemanage);
             ftr = nanoseconds(t_slopemanage, t_ftr);
+            printf("Timing...\n");
         }
         slopemanage = moving_average(slopemanage, nanoseconds(t_start, t_slopemanage), navg);
         ftr = moving_average(ftr, nanoseconds(t_slopemanage, t_ftr), navg);
     }
     
-    printf("Averaged %f ns for slope management.\n", slopemanage);
-    printf("Averaged %f ns for ftr.\n", ftr);
-    printf("Total iteration time %f ns corresponds to a rate of %f Hz\n", (slopemanage + ftr), 1e9 / (slopemanage + ftr));
+    printf("Averaged %.0f ns for slope management.\n", slopemanage);
+    printf("Averaged %.0f ns for ftr.\n", ftr);
+    printf("Total iteration time %.0f ns corresponds to a rate of %.0f kHz\n", (slopemanage + ftr), 1e6 / (slopemanage + ftr));
     // Free the memory once at the end.
     printf("Freeing...\n");
-    slope_management_free(manage_plan);
-    ftr_free(plan);
+    slope_management_destroy(manage_plan);
+    ftr_destroy(plan);
     
     printf("Done!\n");
     return 0;
