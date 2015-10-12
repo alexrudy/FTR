@@ -27,7 +27,10 @@ cdef extern from "ftr.h":
     ftr_plan ftr_plan_reconstructor(int nx, int ny, double *sx, double *sy, double *est)
     void ftr_set_filter(ftr_plan recon, complex *gx, complex *gy)
     void ftr_reconstruct(ftr_plan recon)
+    void ftr_destroy(ftr_plan recon)
     
+
+np.import_array()
 
 cdef class CFTRBase:
     
@@ -36,15 +39,24 @@ cdef class CFTRBase:
     cdef np.ndarray _gx, _gy
     cdef tuple _shape
     
-    def __cinit__(self, shape, *args, **kwargs):
+    def __cinit__(self, ap, *args, **kwargs):
+        """
+        Initialize the c-allocated variables, including interanl numpy arrays.
+        """
+        shape = np.asarray(ap).shape
         self._shape = shape
+        
+        # Set up the arrays here so that we never have to allocate memory again.
+        # but use Numpy so that we get reference counting, etc., for free.
         self.sx = np.empty(shape, dtype=np.float)
         self.sy = np.empty(shape, dtype=np.float)
         self.est = np.empty(shape, dtype=np.float)
         
         # We can safely set up the plan now, as we've initialized all
         # of the required vectors.
-        self._plan = ftr_plan_reconstructor(shape[0], shape[1], <double *>np.PyArray_DATA(self.sx), <double *>np.PyArray_DATA(self.sy), <double *>np.PyArray_DATA(self.est))
+        self._plan = ftr_plan_reconstructor(shape[0], shape[1], 
+            <double *>np.PyArray_DATA(self.sx), <double *>np.PyArray_DATA(self.sy), 
+            <double *>np.PyArray_DATA(self.est))
         
         # We track these here independently of the opaque
         # internal struct so that we can return them as properties.
@@ -56,19 +68,26 @@ cdef class CFTRBase:
         self.update_filters()
         
     
+    def __dealloc__(self):
+        """Deallocation should remove the plan, as that is the non-gc'd object."""
+        ftr_destroy(self._plan)
+    
     def reconstruct(self, np.ndarray[np.float64_t, ndim=2] sx, np.ndarray[np.float64_t, ndim=2] sy):
-        
+        """Perform the actual reconstruction, with a single memory copy."""
         self.sx[...] = sx
         self.sy[...] = sy
         ftr_reconstruct(self._plan)
         return self.est
         
     cdef void update_filters(self):
+        """Update the filters in the plan given the values for the x and y filter stored in this object.
+        
+        This function must be called every time gx or gy is altered.
+        """
         ftr_set_filter(self._plan, <complex *>np.PyArray_DATA(self._gx), <complex *>np.PyArray_DATA(self._gy))
         
     def __repr__(self):
         return "<CFTRBase {0:s}>".format(shapestr(self.shape))
-        
         
     def __call__(self, sx, sy):
         return self.reconstruct(sx, sy)
@@ -92,4 +111,6 @@ cdef class CFTRBase:
         def __set__(self, value):
             self._gy[:] = np.asarray(value, dtype=np.complex)
             self.update_filters()
+            
+        
     
