@@ -36,8 +36,8 @@ ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *
   recon->nx = nx;
   recon->ny = ny;
   recon->nn = nx * ny;
-  recon->nf = (ny / 2) + 1;
-  recon->nft = nx * recon->nf;
+  recon->nf = (nx / 2) + 1;
+  recon->nft = ny * recon->nf;
   nfo = recon->nx % 2 == 0 ? recon->nf - 1 : recon->nf;
   
   
@@ -158,6 +158,7 @@ ftr_destroy(ftr_plan recon)
     fftw_free(recon->gd_ft);
     
     free(recon->ift);
+    free(recon->ifs);
     free(recon->iconj);
     
     free(recon);
