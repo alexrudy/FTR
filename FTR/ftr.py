@@ -115,6 +115,7 @@ class FourierTransformReconstructor(Reconstructor):
     _n = 0
     _dzero = None
     _filtername = "UNDEFINED"
+    _denominator = None
     
     def __repr__(self):
         """Represent this object."""
@@ -491,6 +492,8 @@ class FourierTransformReconstructor(Reconstructor):
 class FastFTReconstructor(CFTRBase, FourierTransformReconstructor):
     """A fourier transform reconstructor which implements the reconstruct
     method using libftr."""
+    
+    _denominator = None
     
     def reconstruct(self, xs, ys):
         """Override reconstruction to force compliance with TT management, etc."""

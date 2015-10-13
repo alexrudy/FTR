@@ -116,17 +116,7 @@ ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy) {
     recon->gy_ft[i] = gy[i];
     denom = (pow(cabs(recon->gx_ft[i]), 2) + pow(cabs(recon->gy_ft[i]), 2)) * (fftw_complex)(recon->nn / 2.0);
     recon->gd_ft[i] = (denom > 0.0) ? (1.0 / denom) : 1.0 + 0.0 * I;
-    
-    
   }
-  x = 3;
-  y = 3;
-  i = (y * recon->nx) + x;
-  printf("c:  ");
-  printf("gx[%d,%d]=%g%+gi ",x,y,creal(recon->gx_ft[i]), cimag(recon->gx_ft[i]));
-  printf("gy[%d,%d]=%g%+gi ",x,y,creal(recon->gy_ft[i]), cimag(recon->gy_ft[i]));
-  printf("gd[%d,%d]=%g%+gi ",x,y,creal(recon->gd_ft[i]), cimag(recon->gd_ft[i]));
-  printf("\n");
 }
 
 void
@@ -141,35 +131,12 @@ ftr_reconstruct(ftr_plan recon) {
 void ftr_estimate(ftr_plan recon) {
   size_t i, j;
   int x, y;
+  fftw_complex numerx, numery, numer, est;
   for(i = 0; i < recon->nft; ++i)
   {
-    if(recon->iconj[i] == 0)
-    {
       recon->est_ft[i] = (conj(recon->gx_ft[recon->ifs[i]]) * recon->sx_ft[i]
-        + conj(recon->gy_ft[recon->ifs[i]]) * recon->sy_ft[i]) 
+        + conj(recon->gy_ft[recon->ifs[i]]) * recon->sy_ft[i])
         * recon->gd_ft[recon->ifs[i]];
-        // * recon->gd_ft[i];
-    }else{
-      recon->est_ft[i] = (conj(recon->gx_ft[recon->ifs[i]]) * conj(recon->sx_ft[i]) 
-        + conj(recon->gy_ft[recon->ifs[i]]) * conj(recon->sy_ft[i])) 
-        * recon->gd_ft[recon->ifs[i]];
-        // * recon->gd_ft[i];
-    }
-    if(cabs(recon->est_ft[i]) > 0.001)
-    {
-      x = i % recon->nf;
-      y = i / recon->nf;
-      printf("c:  ");
-      printf("sx[%d,%d]=%g%+gi ",x,y,creal(recon->sx_ft[i]), cimag(recon->sx_ft[i]));
-      printf("sy[%d,%d]=%g%+gi ",x,y,creal(recon->sy_ft[i]), cimag(recon->sy_ft[i]));
-      printf("es[%d,%d]=%g%+gi ",x,y,creal(recon->est_ft[i]), cimag(recon->est_ft[i]));
-      printf("\n");
-      printf("c:  ");
-      printf("gx[%d,%d]=%g%+gi ",x,y,creal(recon->gx_ft[recon->ifs[i]]), cimag(recon->gx_ft[recon->ifs[i]]));
-      printf("gy[%d,%d]=%g%+gi ",x,y,creal(recon->gy_ft[recon->ifs[i]]), cimag(recon->gy_ft[recon->ifs[i]]));
-      printf("gd[%d,%d]=%g%+gi ",x,y,creal(recon->gd_ft[recon->ifs[i]]), cimag(recon->gd_ft[recon->ifs[i]]));
-      printf("\n");
-    }
   }
   
   
