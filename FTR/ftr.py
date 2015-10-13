@@ -29,7 +29,7 @@ from astropy.utils import lazyproperty
 
 # Local imports
 from .base import Reconstructor
-from ._ftr import CFTRBase
+from .libftr._ftr import CFTRBase
 from .utils import (complexmp, ignoredivide, remove_piston, remove_tiptilt, 
     fftgrid, shapegrid, shapestr, apply_tiptilt)
 

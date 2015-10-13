@@ -5,7 +5,7 @@ Cython wrappers for the C implementation of the Fourier Transform Reconstructor.
 import numpy as np
 cimport numpy as np
 
-from .utils import shapestr
+from ..utils import shapestr
 
 cdef extern from "complex.h":
     pass
