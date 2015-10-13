@@ -58,3 +58,4 @@ class FourierTransformReconstructorTestBase(ReconstructorTestBase):
         
 class TestFourierTransformReconstructor(FourierTransformReconstructorTestBase):
     pass
+

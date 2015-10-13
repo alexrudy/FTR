@@ -19,3 +19,12 @@ class TestFTRLibCython(FourierTransformReconstructorTestBase):
     
     repr = "<CFTRBase {shape}>"
     
+    def test_compare_to_python(self, ap, filter_name, phase, shape):
+        """Test comparison to the python-only filter."""
+        reconstructor = self.cls(ap, filter=filter_name)
+        reconstructor_py = ftr.FourierTransformReconstructor(ap, filter=filter_name)
+        xs, ys = reconstructor.invert(phase)
+        phase_rt = reconstructor(xs, ys)
+        phase_py = reconstructor_py(xs, ys)
+        np.testing.assert_allclose(phase_rt, phase_py, atol=1e-7)
+        
