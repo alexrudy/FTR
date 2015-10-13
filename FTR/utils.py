@@ -179,7 +179,7 @@ def shapegrid(shape, centered=True):
     
     """
     if centered:
-        ii = [ np.arange(s) - (s / 2.0) for s in reversed(shape) ]
+        ii = [ np.arange(s) - ((s-1) / 2.0) for s in reversed(shape) ]
     else:
         ii = [ np.arange(s) for s in reversed(shape) ]
     return tuple(reversed(np.meshgrid(*ii)))

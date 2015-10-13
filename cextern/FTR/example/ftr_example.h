@@ -24,6 +24,7 @@ int clock_gettime(int clk_id, struct timespec *t);
 #endif
 
 #include <stdlib.h>
+#include <stdio.h>
 #include "clock.c"
 
 #endif /* end of include guard: FTR_EXAMPLE_H_9FF1C8EE */

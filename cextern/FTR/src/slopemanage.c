@@ -7,13 +7,20 @@
 //
 
 #include "slopemanage.h"
-#include <stdlib.h>
 #include <stdio.h>
 
+struct slope_management_plan_s {
+    int nx, ny, nn;
+    int *row_any, *left, *right;
+    int *col_any, *top, *bottom;
+    double *y_row_sum, *x_col_sum;
+    int *ap;
+};
+
 //TODO: This function should provide error checking for invalid apertures.
-sm_plan slope_management_plan(int nx, int ny, int *ap)
+sm_plan slope_management_plan(int ny, int nx, int *ap)
 {
-    size_t r, c;
+    int r, c;
     int *row, *column;
     int cell;
     
@@ -37,7 +44,7 @@ sm_plan slope_management_plan(int nx, int ny, int *ap)
         plan->left[r] = -1;
         plan->right[r] = -1;
         plan->row_any[r] = 0;
-        for(c = 1; c < nx; ++c)
+        for(c = 0; c < nx; ++c)
         {
             cell = *(row + c);
             if(cell != 0 && plan->left[r] == -1)
@@ -88,11 +95,12 @@ sm_plan slope_management_plan(int nx, int ny, int *ap)
     return plan;
 }
 
-void slope_management_execute(sm_plan plan, double * sx, double * sy)
+void slope_management_execute(sm_plan plan, double * sy, double * sx)
 {
-    size_t i, j;
+    int i, j;
     int n;
     double row_sum, col_sum;
+    double *row, *col;
     
     for(i = 0; i < plan->nn; ++i)
     {
@@ -103,11 +111,16 @@ void slope_management_execute(sm_plan plan, double * sx, double * sy)
             for(j = 0; j < plan->nx; ++j)
             {
                 n = (i * plan->nx) + j;
-                row_sum += sy[n] * plan->ap[n];
+                if(plan->ap[n] == 1)
+                {
+                  row_sum += sy[n];
+                }
             }
-            (sy + (i * plan->nx))[plan->left[i] - 1] = -0.5 * row_sum;
-            (sy + (i * plan->nx))[plan->right[i] + 1] = -0.5 * row_sum;
+            row = (sy + (i * plan->nx));
+            row[plan->left[i] - 1] = -0.5 * row_sum;
+            row[plan->right[i] + 1] = -0.5 * row_sum;
         }
+        
         if(i < plan->nx && plan->col_any[i] == 1)
         {
             // Sum the column, so we can use it to edge correct.
@@ -115,22 +128,30 @@ void slope_management_execute(sm_plan plan, double * sx, double * sy)
             for(j = 0; j < plan->ny; ++j)
             {
                 n = (j * plan->nx) + i;
-                col_sum += sx[n] * plan->ap[n];
+                
+                if(plan->ap[n] == 1)
+                {
+                  col_sum += sx[n];
+                }
             }
-            (sx + (i * plan->nx))[plan->top[i] - 1] = -0.5 * col_sum;
-            (sx + (i * plan->nx))[plan->bottom[i] + 1] = -0.5 * col_sum;
+            j = (plan->top[i] - 1) * plan->nx;
+            col = sx;
+            col[i + j] = -0.5 * col_sum;
+            j = (plan->bottom[i] + 1) * plan->nx;
+            col[i + j] = -0.5 * col_sum;
         }
+        
     }
     return;
 }
 
 // This method just combines the two methods above if you don't care
 // about doing the memory allocation every time.
-void slope_management(int nx, int ny, int *ap, double * sx, double * sy)
+void slope_management(int ny, int nx, int *ap, double * sy, double * sx)
 {
     sm_plan plan;
-    plan = slope_management_plan(nx, ny, ap);
-    slope_management_execute(plan, sx, sy);
+    plan = slope_management_plan(ny, nx, ap);
+    slope_management_execute(plan, sy, sx);
     slope_management_destroy(plan);
 }
 
