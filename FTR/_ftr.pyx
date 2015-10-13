@@ -29,7 +29,7 @@ cdef extern from "ftr.h":
     void ftr_reconstruct(ftr_plan recon)
     void ftr_destroy(ftr_plan recon)
     
-
+#Need to ensure that we've initialized the numpy c-API.
 np.import_array()
 
 cdef class CFTRBase:
