@@ -12,7 +12,7 @@
 
 struct ftr_plan_s {
   int nx, ny, nn, nft, nf;
-  int *ift, *iconj;
+  int *ift, *iconj, *ifs;
   double *sx, *sy, *est;
   fftw_complex *sx_ft, *sy_ft, *est_ft;
   fftw_complex *gx_ft, *gy_ft, *gd_ft;
@@ -43,6 +43,7 @@ ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *
   
   /* Index array */
   recon->ift = malloc(sizeof(int) * recon->nn);
+  recon->ifs = malloc(sizeof(int) * recon->nft);
   recon->iconj = malloc(sizeof(int) * recon->nn);
   
   /* Input and output arrays. */
@@ -54,6 +55,9 @@ ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *
   recon->est_ft = fftw_malloc(sizeof(fftw_complex) * recon->nn);
   recon->sx_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
   recon->sy_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
+
+  recon->gx_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
+  recon->gy_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
   recon->gd_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
   
   for(i = 0; i < recon->nn; ++i)
@@ -71,6 +75,7 @@ ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *
     io = (y * recon->nx) + x;
     
     recon->ift[io] = i;
+    recon->ifs[i] = io;
     recon->iconj[io] = 0;
     
     if(y == 0 && x > 0 && x < nfo)
@@ -103,15 +108,25 @@ void
 ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy) {
   
   size_t i;
+  int x, y;
   double denom;
-  recon->gx_ft = gx;
-  recon->gy_ft = gy;
-  
   for(i = 0; i < recon->nn; ++i)
   {
-    denom = (cpow(cabs(recon->gx_ft[i]), 2.0) + cpow(cabs(recon->gy_ft[i]), 2.0)) * (fftw_complex)(recon->nn / 2.0);
+    recon->gx_ft[i] = gx[i];
+    recon->gy_ft[i] = gy[i];
+    denom = (pow(cabs(recon->gx_ft[i]), 2) + pow(cabs(recon->gy_ft[i]), 2)) * (fftw_complex)(recon->nn / 2.0);
     recon->gd_ft[i] = (denom > 0.0) ? (1.0 / denom) : 1.0 + 0.0 * I;
+    
+    
   }
+  x = 3;
+  y = 3;
+  i = (y * recon->nx) + x;
+  printf("c:  ");
+  printf("gx[%d,%d]=%g%+gi ",x,y,creal(recon->gx_ft[i]), cimag(recon->gx_ft[i]));
+  printf("gy[%d,%d]=%g%+gi ",x,y,creal(recon->gy_ft[i]), cimag(recon->gy_ft[i]));
+  printf("gd[%d,%d]=%g%+gi ",x,y,creal(recon->gd_ft[i]), cimag(recon->gd_ft[i]));
+  printf("\n");
 }
 
 void
@@ -125,15 +140,39 @@ ftr_reconstruct(ftr_plan recon) {
 
 void ftr_estimate(ftr_plan recon) {
   size_t i, j;
-  for(i = 0; i < recon->nn; ++i)
+  int x, y;
+  for(i = 0; i < recon->nft; ++i)
   {
     if(recon->iconj[i] == 0)
     {
-      recon->est_ft[i] = (conj(recon->gx_ft[recon->ift[i]]) * recon->sx_ft[i] + conj(recon->gy_ft[recon->ift[i]]) * recon->sy_ft[i]) * recon->gd_ft[i];
+      recon->est_ft[i] = (conj(recon->gx_ft[recon->ifs[i]]) * recon->sx_ft[i]
+        + conj(recon->gy_ft[recon->ifs[i]]) * recon->sy_ft[i]) 
+        * recon->gd_ft[recon->ifs[i]];
+        // * recon->gd_ft[i];
     }else{
-      recon->est_ft[i] = (conj(recon->gx_ft[recon->ift[i]]) * conj(recon->sx_ft[i]) + conj(recon->gy_ft[recon->ift[i]]) * conj(recon->sy_ft[i])) * recon->gd_ft[i];
+      recon->est_ft[i] = (conj(recon->gx_ft[recon->ifs[i]]) * conj(recon->sx_ft[i]) 
+        + conj(recon->gy_ft[recon->ifs[i]]) * conj(recon->sy_ft[i])) 
+        * recon->gd_ft[recon->ifs[i]];
+        // * recon->gd_ft[i];
+    }
+    if(cabs(recon->est_ft[i]) > 0.001)
+    {
+      x = i % recon->nf;
+      y = i / recon->nf;
+      printf("c:  ");
+      printf("sx[%d,%d]=%g%+gi ",x,y,creal(recon->sx_ft[i]), cimag(recon->sx_ft[i]));
+      printf("sy[%d,%d]=%g%+gi ",x,y,creal(recon->sy_ft[i]), cimag(recon->sy_ft[i]));
+      printf("es[%d,%d]=%g%+gi ",x,y,creal(recon->est_ft[i]), cimag(recon->est_ft[i]));
+      printf("\n");
+      printf("c:  ");
+      printf("gx[%d,%d]=%g%+gi ",x,y,creal(recon->gx_ft[recon->ifs[i]]), cimag(recon->gx_ft[recon->ifs[i]]));
+      printf("gy[%d,%d]=%g%+gi ",x,y,creal(recon->gy_ft[recon->ifs[i]]), cimag(recon->gy_ft[recon->ifs[i]]));
+      printf("gd[%d,%d]=%g%+gi ",x,y,creal(recon->gd_ft[recon->ifs[i]]), cimag(recon->gd_ft[recon->ifs[i]]));
+      printf("\n");
     }
   }
+  
+  
   return;
 }
 
@@ -147,6 +186,8 @@ ftr_destroy(ftr_plan recon)
     fftw_free(recon->est_ft);
     fftw_free(recon->sx_ft);
     fftw_free(recon->sy_ft);
+    fftw_free(recon->gx_ft);
+    fftw_free(recon->gy_ft);
     fftw_free(recon->gd_ft);
     
     free(recon->ift);
