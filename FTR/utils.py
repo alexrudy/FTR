@@ -106,7 +106,7 @@ def fftgrid(shape, scale=1.0/(2.0*np.pi)):
 def shapegrid(shape, centered=True):
     """A grid shaped for numpy."""
     if centered:
-        ii = [ np.arange(s) - (s / 2.0) for s in reversed(shape) ]
+        ii = [ np.arange(s) - ((s-1) / 2.0) for s in reversed(shape) ]
     else:
         ii = [ np.arange(s) for s in reversed(shape) ]
     return tuple(reversed(np.meshgrid(*ii)))

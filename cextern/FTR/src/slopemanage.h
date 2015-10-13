@@ -5,19 +5,12 @@
 //  Created by Alexander Rudy on 2015-10-10.
 //  Copyright 2015 Alexander Rudy. All rights reserved.
 //
+#include <stdlib.h>
 
 #ifndef SLOPEMANAGE_H_18A446D7
 #define SLOPEMANAGE_H_18A446D7
 
-typedef struct slope_management_plan_s {
-    int nx;
-    int ny;
-    int nn;
-    int *row_any, *left, *right;
-    int *col_any, *top, *bottom;
-    double *y_row_sum, *x_col_sum;
-    int *ap;
-} * sm_plan;
+typedef struct slope_management_plan_s * sm_plan;
 
 sm_plan slope_management_plan(int nx, int ny, int *ap);
 void slope_management_execute(sm_plan plan, double * sx, double * sy);

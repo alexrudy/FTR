@@ -8,9 +8,6 @@ import numpy as np
 from .test_reconstructor_base import ReconstructorTestBase
 from .test_ftr import FourierTransformReconstructorTestBase, filter_name
 from .. import ftr
-from ..ftr import mod_hud_filter
-from ..utils import circle_aperture, remove_piston, complexmp
-
 
 class TestFTRLibCython(FourierTransformReconstructorTestBase):
     """Test the Fourier Transform Reconstructor."""
@@ -27,4 +24,5 @@ class TestFTRLibCython(FourierTransformReconstructorTestBase):
         phase_rt = reconstructor(xs, ys)
         phase_py = reconstructor_py(xs, ys)
         np.testing.assert_allclose(phase_rt, phase_py, atol=1e-7)
+        
         
