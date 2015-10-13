@@ -80,7 +80,7 @@ def main():
         index_view(index, recon, xs, ys)
         index_view((2,4), recon, xs, ys)
         index_view((1,6), recon, xs, ys)
-        index_view((9,4), recon, xs, ys)
+        # index_view((9,4), recon, xs, ys)
         print("Finished, but round-tripping failed.")
         
         
@@ -96,9 +96,8 @@ def main():
         #     ax.imshow(np.real(np.fft.fftn(data)), cmap='hot')
         #     ax.set_title(label)
         plt.pause(0.1)
-        print(phase/phi)
-        print(phase - phi)
-        print(np.fft.fftn(phase - phi))
+        print(np.fft.fftn(phase))
+        print(np.fft.fftn(phi))
         try:
             np.testing.assert_allclose(xs, x2)
             np.testing.assert_allclose(ys, y2)

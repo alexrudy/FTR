@@ -16,12 +16,12 @@ class ReconstructorTestBase(object):
     
     repr = None
     
-    @pytest.fixture(scope='module')
-    def shape(self):
+    @pytest.fixture(params=[0, pytest.mark.xfail(3)])
+    def shape(self, request):
         """Random integer size n."""
-        # return (random.randint(10, 128), random.randint(10, 128))
-        n = random.randint(5, 128) * 2
-        return (n, n)
+        n1 = (random.randint(5, 128) * 2)
+        n2 = n1 + request.param
+        return (n1, n2)
         
     @pytest.fixture
     def szero(self, shape):
