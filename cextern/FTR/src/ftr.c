@@ -8,7 +8,7 @@
 
 #include "ftr.h"
 #include <stdlib.h>
-#define FTR_PRECOMUTE FFTW_ESTIMATE
+#define FTR_PRECOMUTE FFTW_MEASURE
 
 struct ftr_plan_s {
   int nx, ny, nn, nft, nf;
