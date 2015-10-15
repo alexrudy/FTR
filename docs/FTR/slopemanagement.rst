@@ -10,3 +10,4 @@ Reference / API
 ===============
 
 .. automodapi:: FTR.slopemanage
+
