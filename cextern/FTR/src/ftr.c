@@ -12,7 +12,7 @@
 
 struct ftr_plan_s {
   int nx, ny, nn, nft, nf;
-  int *ift, *iconj, *ifs;
+  int *ift, *ifs;
   double *sx, *sy, *est;
   fftw_complex *sx_ft, *sy_ft, *est_ft;
   fftw_complex *gx_ft, *gy_ft, *gd_ft;
@@ -26,6 +26,43 @@ This is a private method, decalared here for use inside
 ftr_plan_reconstructor.
 */
 void ftr_allocate_fftw_plans(ftr_plan recon);
+
+//TODO: This is probably the broken piece when nx or ny are odd.
+//I'm not sure why it is dependent on even or odd behavior, but hey?
+void ftr_map_half_complex(int ny, int nx, int * map, int * imap)
+{
+  int x, y;
+  int nn, nf, nft;
+  int i_full, i_half;
+  size_t i;
+  
+  // Compute dimensions.
+  nn = nx * ny;
+  nf = (nx / 2) + 1;
+  nft = nf * ny;
+  
+  for(i = 0; i < nft; ++i)
+  {
+    y = i / nf;
+    x = i % nf;
+    
+    i_half = (y * nf) + x;
+    i_full = (y * nx) + x;
+    
+    map[i_full] = i_half;
+    imap[i_half] = i_full;
+    if(y == 0 && x > 0 && x < nf - 1)
+    {
+      i_full = (nx - x);
+      map[i_full] = i_half;
+    }
+    if(y > 0 && x > 0 && x < nf - 1)
+    {
+      i_full = (nx - x) + ((ny - y) * nx);
+      map[i_full] = i_half;
+    }
+  }
+}
 
 ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *est) {
   size_t i;
@@ -44,7 +81,6 @@ ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *
   /* Index array */
   recon->ift = malloc(sizeof(int) * recon->nn);
   recon->ifs = malloc(sizeof(int) * recon->nft);
-  recon->iconj = malloc(sizeof(int) * recon->nn);
   
   /* Input and output arrays. */
   recon->sx = sx;
@@ -60,39 +96,10 @@ ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *
   recon->gy_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
   recon->gd_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
   
-  for(i = 0; i < recon->nn; ++i)
-  {
-    recon->ift[i] = -1;
-  }
-  /*
-  Create the indexing arrays for unpacking complex transform results (which are hermetian)
-  TODO: This might not matter, since the other direction proceeds to ignore it anyways!
-  */
-  for(i = 0; i < recon->nft; ++i)
-  {
-    y = i / recon->nf;
-    x = i % recon->nf;
-    io = (y * recon->nx) + x;
-    
-    recon->ift[io] = i;
-    recon->ifs[i] = io;
-    recon->iconj[io] = 0;
-    
-    if(y == 0 && x > 0 && x < nfo)
-    {
-      io = (recon->nx - x);
-      recon->ift[io] = i;
-      recon->iconj[io] = 1;
-    }
-    if(y > 0 && x > 0 && x < nfo)
-    {
-      io = (recon->nx - x) + ((recon->ny - y) * recon->nx);
-      recon->ift[io] = i;
-      recon->iconj[io] = 1;
-      
-    }
-  }
+  /* Prepare the mapping for the half-complex problem. */
+  ftr_map_half_complex(ny, nx, recon->ift, recon->ifs);
   
+  /* Allocate FFTW plans. */
   ftr_allocate_fftw_plans(recon);
   return recon;
 }
@@ -115,6 +122,10 @@ ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy) {
     recon->gx_ft[i] = gx[i];
     recon->gy_ft[i] = gy[i];
     denom = (pow(cabs(recon->gx_ft[i]), 2) + pow(cabs(recon->gy_ft[i]), 2)) * (fftw_complex)(recon->nn / 2.0);
+    // Note the normalization factor on the end here. The factor of two accounts for the two FFTs involved
+    // in the forward transform, with only one FFT involved in the backward transform.
+    
+    // This ensures that we never divide by zero, so long as the filter sums to zero.
     recon->gd_ft[i] = (denom > 0.0) ? (1.0 / denom) : 1.0 + 0.0 * I;
   }
 }
@@ -122,9 +133,17 @@ ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy) {
 void
 ftr_reconstruct(ftr_plan recon) {
   
+  // Forward slope transforms.
   fftw_execute(recon->p_sx);
   fftw_execute(recon->p_sy);
+  
+  // Estimation using the gx/gy filters.
   ftr_estimate(recon);
+  
+  //TODO: Should allow a post-estimate step, perhaps using a void pointer and a function
+  // to muck with recon->est_ft before performing the inverse transform.
+  
+  // Inverse phase transform.
   fftw_execute(recon->p_est);
 }
 
@@ -159,8 +178,7 @@ ftr_destroy(ftr_plan recon)
     
     free(recon->ift);
     free(recon->ifs);
-    free(recon->iconj);
-    
+        
     free(recon);
     return;
 }
