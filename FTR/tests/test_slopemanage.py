@@ -5,16 +5,13 @@ Tests for slope management.
 import pytest
 import numpy as np
 
-from ..libftr import _slopemanage
 from .. import slopemanage
 from ..utils import circle_aperture, remove_piston, complexmp, shapegrid
 
 @pytest.fixture
 def shape():
     """Return a random shape."""
-    nr = 6
-    # nr = np.random.randint(10,20)
-    # nc = np.random.randint(10,128)
+    nr = np.random.randint(10,20)
     return (nr, nr)
     
 @pytest.fixture
@@ -33,14 +30,14 @@ def phase(aperture):
 
 @pytest.fixture
 def sx(aperture):
-    """Random phase."""
+    """Random slopes."""
     sx = np.random.randn(*aperture.shape)
     sx *= aperture
     return sx
 
 @pytest.fixture
 def sy(aperture):
-    """Random phase."""
+    """Random slopes."""
     sy = np.random.randn(*aperture.shape)
     sy *= aperture
     return sy
@@ -51,8 +48,26 @@ def test_compare_slopemanage(sx, sy, aperture, shape):
     
     sx_c = np.copy(sx)
     sy_c = np.copy(sy)
-    _slopemanage.do_slope_management(aperture, sy_c, sx_c)
+    slopemanage.slope_management_fast(aperture, sy_c, sx_c)
     sy_p, sx_p = slopemanage.slope_management(aperture, sy, sx)
     np.testing.assert_allclose(sx_c, sx_p, atol=1e-7)
     np.testing.assert_allclose(sy_c, sy_p, atol=1e-7)
+
+def test_compare_slopemanage_object(sx, sy, aperture, shape):
+    """Compare slope management results."""
+    np.set_printoptions(precision=4, linewidth=120, suppress=True)
+    
+    sx_c = np.copy(sx)
+    sy_c = np.copy(sy)
+    sm = slopemanage.SlopeManager(aperture)
+    sm(sy_c, sx_c)
+    sy_p, sx_p = slopemanage.slope_management(aperture, sy, sx)
+    np.testing.assert_allclose(sx_c, sx_p, atol=1e-7)
+    np.testing.assert_allclose(sy_c, sy_p, atol=1e-7)
+    
+def test_many_iteration_slopemanage(sx, sy, aperture, shape):
+    """Test many iteration slope management."""
+    sm = slopemanage.SlopeManager(aperture)
+    for i in range(np.random.randint(2,30)):
+        sm(sy, sx)
     

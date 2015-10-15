@@ -6,6 +6,7 @@ import numpy as np
 import warnings
 
 from .ftr import FourierTransformReconstructor
+from .libftr._slopemanage import SlopeManager, slope_management_fast
 from .utils import remove_piston, apply_tiptilt
 
 __all__ = ['SlopeManagedFTR', 'slope_management', 'edge_extend']
