@@ -13,8 +13,6 @@ and does not provide functions to generate filters out of the box. It is designe
 
 The design is meant to mimic the design of FFTW plans. This was chosen because FTRlib uses FFTW to implement the fast Fourier transform, making the plan architecture a reasonable choice.
 
-.. warning:: There is still at least one bug in this code. It incorrectly handles non-symetrically sized domains (i.e. ``shape = (10, 12)``). For square domains, it is well tested and seems to work just fine.
-
 Integrating libFTR
 ==================
 

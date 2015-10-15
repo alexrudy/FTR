@@ -16,7 +16,7 @@ class ReconstructorTestBase(object):
     
     repr = None
     
-    @pytest.fixture(params=[0, pytest.mark.xfail(3)])
+    @pytest.fixture(params=[0, 3])
     def shape(self, request):
         """Random integer size n."""
         n1 = (random.randint(5, 128) * 2)
