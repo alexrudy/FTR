@@ -35,19 +35,6 @@ void make_aperture(int * ap, int nx, int ny)
     }
 }
 
-double nanoseconds(const struct timespec start, const struct timespec end)
-{
-    double total;
-    total = (end.tv_sec - start.tv_sec) * 1e9;
-    total += (end.tv_nsec - start.tv_nsec);
-    return total;
-}
-
-double moving_average(double average, double duration, int navg)
-{
-    return ((average * (double)(navg - 1)) + duration) / (double)navg;
-}
-
 int main (int argc, char const *argv[])
 {
     int i;
