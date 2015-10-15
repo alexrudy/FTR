@@ -35,3 +35,16 @@ int mywait(int ms) {
 
 #endif
 
+
+double nanoseconds(const struct timespec start, const struct timespec end)
+{
+    double total;
+    total = (end.tv_sec - start.tv_sec) * 1e9;
+    total += (end.tv_nsec - start.tv_nsec);
+    return total;
+}
+
+double moving_average(double average, double duration, int navg)
+{
+    return ((average * (double)(navg - 1)) + duration) / (double)navg;
+}

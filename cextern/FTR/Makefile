@@ -13,7 +13,7 @@ LIBDIR = lib/
 EXAMPLE = example/
 INCLUDEDIR = include/
 INCLUDE = $(INCLUDEDIR)ftr.h $(INCLUDEDIR)slopemanage.h
-TARGET = $(LIBDIR)libftr.so ftr-example $(INCLUDE)
+TARGET = $(LIBDIR)libftr.so ftr-example recon-timing $(INCLUDE)
 OBJECTS = $(BUILDDIR)ftr.o $(BUILDDIR)slopemanage.o
 
 $(BUILDDIR)%.o : $(SRCDIR)%.c $(INCLUDE)
@@ -29,6 +29,10 @@ $(LIBDIR)lib%.so : $(OBJECTS)
 	
 ftr-example : $(EXAMPLE)ftr_example.o $(LIBDIR)libftr.so
 	$(CC) $(LDFLAGS) -L$(LIBDIR) -I$(INCLUDEDIR) -lftr -o $@ $<
+
+recon-timing : $(EXAMPLE)recon_timing.o $(LIBDIR)libftr.so
+	$(CC) $(LDFLAGS) -L$(LIBDIR) -I$(INCLUDEDIR) -lftr -lopenblas -o $@ $<
+
 
 $(INCLUDEDIR)%.h : $(SRCDIR)%.h
 	@mkdir -p $(INCLUDEDIR)
