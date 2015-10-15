@@ -14,22 +14,32 @@
 #include <complex.h>
 #include <fftw3.h>
 
-// Type definitions
+// Type definition for the FTR Plan.
+// FTR Plans are opaque structures managed
+// by the functions below.
 typedef struct ftr_plan_s * ftr_plan;
 
+
 // Functions
+
+// Create an FTR plan.
 ftr_plan
 ftr_plan_reconstructor(int nx, int ny, double *sx, double *sy, double *est);
 
+// Set the filter associated with an FTR plan.
 void
 ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy);
 
+// Execute the plan, acting on the arrays specified when this plan
+// was constructed.
 void
 ftr_reconstruct(ftr_plan recon);
 
+// Destroy the plan, cleaning up memory.
 void
 ftr_destroy(ftr_plan recon);
 
+// Perform only the FTR estimation step on the transformed arrays.
 void 
 ftr_estimate(ftr_plan recon);
 
