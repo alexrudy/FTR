@@ -52,10 +52,7 @@ distribute-*.tar.gz
 # Jupyter Notebooks
 .ipynb_checkpoints/*
 
-<<<<<<< HEAD
 # LLNL Code, not for release
-=======
->>>>>>> origin/ftrlib-c
 # Ignore IDL code, because we aren't sure if we can publish it.
 # (in fact, probably can't!)
 idlftr/*
