@@ -41,7 +41,6 @@ int main (int argc, char const *argv[])
     struct timespec t_start, t_slopemanage, t_ftr;
     double sm_avg, ftr_avg;
     int navg = 100;
-    
     int nx = 10;
     int ny = 10;
     int nn = nx * ny;
@@ -52,14 +51,15 @@ int main (int argc, char const *argv[])
     ftr_plan plan;
     sm_plan manage_plan;
     
-    if(argc > 0)
+    if(argc > 1)
     {
       iters = (int)atof(argv[1]);
     }else{
       iters = 1e5;
     }
+    
     printf("Conducting %d iterations.\n", iters);
-    printf("Allocating...\n");
+    printf("Allocating arrays. ");
     
     sx = malloc(sizeof(double) * nn);
     sy = malloc(sizeof(double) * nn);
@@ -71,8 +71,8 @@ int main (int argc, char const *argv[])
     
     for(i = 0; i < nn; ++i)
     {
-        gx[i] = 0.0;
-        gy[i] = 0.0;
+        gx[i] = 1.0;
+        gy[i] = 1.0;
     }
     
     zero(sx, nn);
@@ -81,7 +81,7 @@ int main (int argc, char const *argv[])
     make_aperture(ap, nx, ny);
     
     // This only needs to be done once to allocate memory, etc.
-    printf("Planning...\n");
+    printf("Planning reconstruction.\n");
     plan = ftr_plan_reconstructor(nx, ny, sx, sy, est);
     ftr_set_filter(plan, gx, gy);
     manage_plan = slope_management_plan(ny, nx, ap);
@@ -94,14 +94,14 @@ int main (int argc, char const *argv[])
         clock_gettime (CLOCK_REALTIME, &t_start); 
         if(i == 0)
         {
-            printf("Slope Management...\n");
+            printf("Slope Management ");
         }
         slope_management_execute(manage_plan, sy, sx);
         clock_gettime (CLOCK_REALTIME, &t_slopemanage); 
         
         if(i == 0)
         {
-            printf("Reconstructing...\n");
+            printf("Reconstructing ");
         }
         ftr_reconstruct(plan);
         clock_gettime (CLOCK_REALTIME, &t_ftr);
@@ -109,16 +109,12 @@ int main (int argc, char const *argv[])
         {
             sm_avg = nanoseconds(t_start, t_slopemanage);
             ftr_avg = nanoseconds(t_slopemanage, t_ftr);
-            printf("Timing...\n");
+            printf("Timing ");
         }
         sm_avg = moving_average(sm_avg, nanoseconds(t_start, t_slopemanage), navg);
         ftr_avg = moving_average(ftr_avg, nanoseconds(t_slopemanage, t_ftr), navg);
-        if(i == 0)
-        {
-          printf("Iter1 Done...\n");
-        }
     }
-    printf("Done with loop...\n");
+    printf("\n");
     printf("Averaged %.0f ns for slope management.\n", sm_avg);
     printf("Averaged %.0f ns for ftr.\n", ftr_avg);
     printf("Total iteration time %.0f ns corresponds to a rate of %.0f kHz\n", (sm_avg + ftr_avg), 1e6 / (sm_avg + ftr_avg));
