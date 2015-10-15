@@ -3,6 +3,7 @@
 
 # This is the build target for the example FTR script.
 ftr-example
+recon-timing
 
 # Thes are built targets:
 include/*
