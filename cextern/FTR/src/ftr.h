@@ -19,6 +19,9 @@
 // by the functions below.
 typedef struct ftr_plan_s * ftr_plan;
 
+// Define the callback function.
+typedef void (*ftr_estimate_callback)(void * data, fftw_complex * est_ft);
+
 
 // Functions
 
@@ -34,6 +37,9 @@ ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy);
 // was constructed.
 void
 ftr_reconstruct(ftr_plan recon);
+
+void
+ftr_reconstruct_with_callback(ftr_plan recon, ftr_estimate_callback callback, void * data);
 
 // Destroy the plan, cleaning up memory.
 void

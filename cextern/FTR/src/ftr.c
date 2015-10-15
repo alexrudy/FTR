@@ -131,20 +131,25 @@ ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy) {
 }
 
 void
-ftr_reconstruct(ftr_plan recon) {
+ftr_reconstruct(ftr_plan recon)
+{
+    ftr_reconstruct_with_callback(recon, NULL, NULL);
+    return;
+}  
+
+
+void
+ftr_reconstruct_with_callback(ftr_plan recon, ftr_estimate_callback callback, void * data)
+{
+    // Forward slope transforms.
+    fftw_execute(recon->p_sx);
+    fftw_execute(recon->p_sy);
   
-  // Forward slope transforms.
-  fftw_execute(recon->p_sx);
-  fftw_execute(recon->p_sy);
-  
-  // Estimation using the gx/gy filters.
-  ftr_estimate(recon);
-  
-  //TODO: Should allow a post-estimate step, perhaps using a void pointer and a function
-  // to muck with recon->est_ft before performing the inverse transform.
-  
-  // Inverse phase transform.
-  fftw_execute(recon->p_est);
+    // Estimation using the gx/gy filters.
+    ftr_estimate(recon);
+    if(callback) callback(data, recon->est_ft);
+    fftw_execute(recon->p_est);
+    return; 
 }
 
 void ftr_estimate(ftr_plan recon) {
