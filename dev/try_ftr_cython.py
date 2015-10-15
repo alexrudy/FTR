@@ -91,10 +91,6 @@ def main():
             ax.set_title(label)
             fig.colorbar(im, ax=ax)
         
-        # fig, ((a_x1, a_x2),(a_y1,a_y2)) = plt.subplots(2,2)
-        # for ax, data, label in zip((a_x1, a_x2,a_y1,a_y2),(xs,sx,ys,sy),"xs,sx,ys,sy".split(",")):
-        #     ax.imshow(np.real(np.fft.fftn(data)), cmap='hot')
-        #     ax.set_title(label)
         plt.pause(0.1)
         print(np.fft.fftn(phase))
         print(np.fft.fftn(phi))
@@ -103,9 +99,9 @@ def main():
             np.testing.assert_allclose(ys, y2)
             np.testing.assert_allclose(phase, ph2)
             np.testing.assert_allclose(phi, ph2)
-        finally:
+        except AssertionError:
             plt.show()
-            pass
+            raise
         
         
 if __name__ == '__main__':
