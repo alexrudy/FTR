@@ -29,10 +29,11 @@ from astropy.utils import lazyproperty
 
 # Local imports
 from .base import Reconstructor
+from .libftr._ftr import CFTRBase
 from .utils import (complexmp, ignoredivide, remove_piston, remove_tiptilt, 
     fftgrid, shapegrid, shapestr, apply_tiptilt)
 
-__all__ = ['FTRFilter', 'FourierTransformReconstructor', 'mod_hud_filter', 'fried_filter', 'ideal_filter', 'inplace_filter', 'hud_filter']
+__all__ = ['FTRFilter', 'FourierTransformReconstructor', 'FastFTReconstructor', 'mod_hud_filter', 'fried_filter', 'ideal_filter', 'inplace_filter', 'hud_filter']
 
 FTRFilter = collections.namedtuple("FTRFilter", ["gx", "gy", "name"])
 if six.PY3:
@@ -114,6 +115,7 @@ class FourierTransformReconstructor(Reconstructor):
     _n = 0
     _dzero = None
     _filtername = "UNDEFINED"
+    _denominator = None
     
     def __repr__(self):
         """Represent this object."""
@@ -333,7 +335,6 @@ class FourierTransformReconstructor(Reconstructor):
         estimate = np.real(fftpack.ifftn(est_ft))
         
         if manage_tt and not suppress_tt:
-            # print("Re-applying tip/tilt [{},{}]".format(xt, yt))
             estimate = apply_tiptilt(self.ap, estimate, xt, yt)
         
         return estimate
@@ -460,7 +461,7 @@ class FourierTransformReconstructor(Reconstructor):
             
         
         """
-        self.gx, self.gy, self._filtername = self._REGISTRY[filter](self.shape)
+        self.gx, self.gy, self._filtername = self.get(filter, self.shape)
         
     @classmethod
     def get(cls, filter, shape):
@@ -489,6 +490,67 @@ class FourierTransformReconstructor(Reconstructor):
     def filters(cls):
         """Return the list of registered filter names."""
         return cls._REGISTRY.keys()
+
+class FastFTReconstructor(CFTRBase, FourierTransformReconstructor):
+    """A fourier transform reconstructor which implements the reconstruct
+    method using :ref:`libftr`.
+    
+    Parameters
+    ----------
+    ap: array_like
+        The aperture of valid measurement points, which also defines the
+        reconstructor shape used to generate filters.
+    filter: string_like, optional
+        The filter name to use. If not provided, it is expected that the user
+        will initialize :attr:`gx` and :attr:`gy` themselves.
+    manage_tt: bool, optional
+        Remove tip and tilt from slopes before reconstruction, and re-apply
+        them after reconstruction. (default is to use ``suppress_tt``)
+    suppress_tt: bool, optional
+        Remove tip and tilt from slopes, and don't re-apply after
+        reconstruction. (default is False)
+        
+    
+    Notes
+    -----
+    The Fourier transforms used in this reconstructor are handled by FFTW <http://fftw.org>, the Fastest Fourier Transform in the West. FFTW gains much of its speed by operating in-place, and performing as many optimization tricks as it knows how. When benchmarked against the pure-python implementaion above, this implementation should be almost an order of magnitude faster.
+    
+    See Also
+    --------
+    :class:`FourierTransformReconstructor`
+    
+    """
+    
+    _denominator = None
+    
+    def reconstruct(self, xs, ys):
+        """Reconstruct slopes to phase.
+        
+        Parameters
+        ----------
+        xs : array_like
+            The x slopes
+        ys : array_like
+            The y slopes
+            
+        Returns
+        -------
+        estimate : array_like
+            An estimate of the phase from the slopes.
+        
+        """
+        if self.manage_tt:
+            xs, xt = remove_piston(self.ap, xs)
+            ys, yt = remove_piston(self.ap, ys)
+        
+        estimate = super(FastFTReconstructor, self).reconstruct(xs, ys)
+        
+        if self.manage_tt and not self.suppress_tt:
+            estimate = apply_tiptilt(self.ap, estimate, xt, yt)
+        
+        return estimate
+    
+
 
 @FourierTransformReconstructor.register("hud")
 def hud_filter(shape):

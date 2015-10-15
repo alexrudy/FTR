@@ -1,0 +1,11 @@
+# We want to include .c files here!
+!*.c
+
+# This is the build target for the example FTR script.
+ftr-example
+recon-timing
+
+# Thes are built targets:
+include/*
+lib/*
+build/*

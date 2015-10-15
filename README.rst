@@ -20,10 +20,16 @@ With ``pip``, you can install this package::
 Status reports for developers
 -----------------------------
 
-.. image:: https://travis-ci.org/alexrudy/FTR.png?branch=master
+<<<<<<< HEAD
+.. image:: https://travis-ci.org/alexrudy/FTR.svg?branch=master
     :target: https://travis-ci.org/alexrudy/FTR
     :alt: Test Status
 
 .. image:: https://readthedocs.org/projects/ftr/badge/?version=latest
     :target: https://readthedocs.org/projects/ftr/?badge=latest
     :alt: Documentation Status
+=======
+.. image:: https://travis-ci.org/astropy/package-template.svg
+    :target: https://travis-ci.org/astropy/package-template
+    :alt: Travis Status
+>>>>>>> origin/ftrlib-c

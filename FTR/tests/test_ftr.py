@@ -14,7 +14,7 @@ def filter_name(request):
     """An FTR filter name."""
     return request.param
 
-class TestFourierTransformReconstructor(ReconstructorTestBase):
+class FourierTransformReconstructorTestBase(ReconstructorTestBase):
     """Test the Fourier Transform Reconstructor."""
     
     cls = ftr.FourierTransformReconstructor
@@ -25,24 +25,18 @@ class TestFourierTransformReconstructor(ReconstructorTestBase):
     def ap(self, shape):
         """Aperture."""
         return np.ones(shape, dtype=np.bool)
-        # r = np.min([np.floor((s / 2.0) - 2) for s in shape])
-        # return circle_aperture(shape, r)
         
     @pytest.fixture
     def phase(self, shape):
         """Random phase."""
         ny, nx = shape
-        phi_ft = complexmp(10.0, 2 * np.pi * np.random.random(shape))
+        phi_ft = np.zeros(shape, dtype=np.complex)
         phi_ft[0,0] = 0.0
-        
-        # We zero everything beyond nyquist, so that we can make it hermitian.
-        phi_ft[ny//2:,:] = 0.0
-        phi_ft[:,nx//2:] = 0.0
-        
+        phi_ft[3,3] = 1.0
         phi = np.real(np.fft.ifftn(phi_ft))
         return phi
     
-    @pytest.fixture
+    @pytest.fixture(scope='function')
     def reconstructor(self, ap):
         """Construct the reconstructor."""
         return self.cls(ap, filter="mod_hud")
@@ -60,5 +54,8 @@ class TestFourierTransformReconstructor(ReconstructorTestBase):
         reconstructor = self.cls(ap, filter=filter_name)
         xs, ys = reconstructor.invert(phase)
         phase_rt = reconstructor.reconstruct(xs, ys)
-        assert np.allclose(phase_rt, phase)
+        np.testing.assert_allclose(phase_rt, phase, atol=1e-7)
         
+class TestFourierTransformReconstructor(FourierTransformReconstructorTestBase):
+    pass
+

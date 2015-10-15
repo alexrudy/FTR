@@ -5,8 +5,10 @@ Fourier Transform Reconstructors
 This package implements the Fourier Transform reconstructor in python and c.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     
     ftr.rst
     slopemanagement.rst
+    matrix.rst
+    libftr.rst
     fftnormalization.rst

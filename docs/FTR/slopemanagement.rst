@@ -1,3 +1,5 @@
+.. _slopemanagement:
+
 ****************************
 Slope Periodicity Management
 ****************************
@@ -8,3 +10,4 @@ Reference / API
 ===============
 
 .. automodapi:: FTR.slopemanage
+
