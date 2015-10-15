@@ -5,10 +5,13 @@ The simple Fourier Transform Reconstructor uses the Fourier transform to provide
 
 Using this module only requires you to provide an aperture to the reconstructor class, and then call the reconstructor class::
     
+    >>> import numpy as np
+    >>> from FTR import FourierTransformReconstructor
+    
     >>> ap = np.ones((10,10))
     >>> reconstructor = FourierTransformReconstructor(ap, filter='mod_hud')
-    >>> sx = np.random.randn(ap.shape)
-    >>> sy = np.random.randn(ap.shape)
+    >>> sx = np.random.randn(*ap.shape)
+    >>> sy = np.random.randn(*ap.shape)
     >>> est = reconstructor(sx, sy)
     
 
