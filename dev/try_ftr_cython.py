@@ -95,10 +95,10 @@ def main():
         print(np.fft.fftn(phase))
         print(np.fft.fftn(phi))
         try:
-            np.testing.assert_allclose(xs, x2)
-            np.testing.assert_allclose(ys, y2)
-            np.testing.assert_allclose(phase, ph2)
-            np.testing.assert_allclose(phi, ph2)
+            np.testing.assert_allclose(xs, x2, atol=1e-7)
+            np.testing.assert_allclose(ys, y2, atol=1e-7)
+            np.testing.assert_allclose(phase, ph2, atol=1e-7)
+            np.testing.assert_allclose(phi, ph2, atol=1e-7)
         except AssertionError:
             plt.show()
             raise

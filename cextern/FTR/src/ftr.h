@@ -43,5 +43,8 @@ ftr_destroy(ftr_plan recon);
 void 
 ftr_estimate(ftr_plan recon);
 
+// Utilties
+void ftr_map_half_complex(int ny, int nx, int * map, int * imap);
+
 #endif /* end of include guard: FTR_H_D3963E38 */
 
