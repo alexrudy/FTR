@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>C implementation of FTR in libFTR &mdash; FTR v0.0.dev329</title>
+    <title>C implementation of FTR in libFTR &mdash; FTR v0.1</title>
     
     <link rel="stylesheet" href="../_static/bootstrap-astropy.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.0.dev329',
+        VERSION:     '0.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="../_static/sidebar.js"></script>
     <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
-    <link rel="top" title="FTR v0.0.dev329" href="../index.html" />
+    <link rel="top" title="FTR v0.1" href="../index.html" />
     <link rel="up" title="Fourier Transform Reconstructors" href="index.html" />
     <link rel="next" title="FFT Normalization" href="fftnormalization.html" />
     <link rel="prev" title="Matrix-multiply Reconstructor" href="matrix.html" />
@@ -69,7 +69,7 @@
 	 |
       </li>
       <li>
-	<a href="../index.html">FTR v0.0.dev329</a>
+	<a href="../index.html">FTR v0.1</a>
 	 &raquo;
       </li>
       <li><a href="index.html" accesskey="U">Fourier Transform Reconstructors</a> &raquo;</li>
@@ -190,7 +190,8 @@ void <code class="descname">ftr_reconstruct</code><span class="sig-paren">(</spa
 <dl class="type">
 <dt id="c.ftr_estimate_callback">
 <code class="descname">ftr_estimate_callback</code><a class="headerlink" href="#c.ftr_estimate_callback" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>This is the callback type for functions which can serve as callbacks in <a class="reference internal" href="#c.ftr_reconstruct_with_callback" title="ftr_reconstruct_with_callback"><code class="xref c c-func docutils literal"><span class="pre">ftr_reconstruct_with_callback()</span></code></a>. The callback signature must match <code class="docutils literal"><span class="pre">void</span> <span class="pre">(*ftr_estimate_callback)(void</span> <span class="pre">*</span> <span class="pre">data,</span> <span class="pre">fftw_complex</span> <span class="pre">*</span> <span class="pre">est_ft)</span></code>. The inclusion of the <code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">data</span></code> pointer allows for an arbitrary structure of user data to be passed in to the Fourier Transform Reconstructor.</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="c.ftr_reconstruct_with_callback">
@@ -201,6 +202,8 @@ void <code class="descname">ftr_reconstruct_with_callback</code><span class="sig
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>recon</strong> (<a class="reference internal" href="#c.ftr_plan" title="ftr_plan"><em>ftr_plan</em></a>) &#8211; The <a class="reference internal" href="#c.ftr_plan" title="ftr_plan"><code class="xref c c-type docutils literal"><span class="pre">ftr_plan</span></code></a> struct for this reconstructor.</li>
+<li><strong>callback</strong> (<a class="reference internal" href="#c.ftr_estimate_callback" title="ftr_estimate_callback"><em>ftr_estimate_callback</em></a>) &#8211; A callback function to be applied to the fourier transform of the phase estimate.</li>
+<li><strong>data</strong> (<em>void*</em>) &#8211; A pointer to data required by <code class="xref py py-obj docutils literal"><span class="pre">callback</span></code>.</li>
 </ul>
 </td>
 </tr>
