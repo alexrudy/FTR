@@ -1,0 +1,8 @@
+
+
+slope_management
+================================
+
+.. currentmodule:: FTR.slopemanage
+
+.. autofunction:: slope_management

@@ -1,0 +1,494 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>FourierTransformReconstructor &mdash; FTR v0.0.dev329</title>
+    
+    <link rel="stylesheet" href="../_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.0.dev329',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
+    <link rel="top" title="FTR v0.0.dev329" href="../index.html" />
+    <link rel="up" title="Simple Fourier Transform Reconstructor" href="../FTR/ftr.html" />
+    <link rel="next" title="FastFTReconstructor" href="FTR.ftr.FastFTReconstructor.html" />
+    <link rel="prev" title="FTRFilter" href="FTR.ftr.FTRFilter.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="../_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../index.html"><span id="logotext1">FTR</span><span id="logotext2">AO</span><span id="logotext3">:docs</span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="FTR.ftr.FastFTReconstructor.html" title="FastFTReconstructor">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="FTR.ftr.FTRFilter.html" title="FTRFilter">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../index.html">FTR v0.0.dev329</a>
+	 &raquo;
+      </li>
+      <li><a href="../FTR/index.html" >Fourier Transform Reconstructors</a> &raquo;</li>
+      <li><a href="../FTR/ftr.html" accesskey="U">Simple Fourier Transform Reconstructor</a> &raquo;</li>
+      
+      <li>FourierTransformReconstructor</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="fouriertransformreconstructor">
+<h1>FourierTransformReconstructor<a class="headerlink" href="#fouriertransformreconstructor" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="FTR.ftr.FourierTransformReconstructor">
+<em class="property">class </em><code class="descclassname">FTR.ftr.</code><code class="descname">FourierTransformReconstructor</code><span class="sig-paren">(</span><em>ap</em>, <em>filter=None</em>, <em>manage_tt=None</em>, <em>suppress_tt=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/FTR/ftr.html#FourierTransformReconstructor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">FTR.base.Reconstructor</span></code></p>
+<p>A reconstructor which uses the fourier transform to turn slopes into an
+estiate of the wavefront phase.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>ap: array_like</strong></p>
+<blockquote>
+<div><p>The aperture of valid measurement points, which also defines the
+reconstructor shape used to generate filters.</p>
+</div></blockquote>
+<p><strong>filter: string_like, optional</strong></p>
+<blockquote>
+<div><p>The filter name to use. If not provided, it is expected that the user
+will initialize <a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.gx" title="FTR.ftr.FourierTransformReconstructor.gx"><code class="xref py py-attr docutils literal"><span class="pre">gx</span></code></a> and <a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.gy" title="FTR.ftr.FourierTransformReconstructor.gy"><code class="xref py py-attr docutils literal"><span class="pre">gy</span></code></a> themselves.</p>
+</div></blockquote>
+<p><strong>manage_tt: bool, optional</strong></p>
+<blockquote>
+<div><p>Remove tip and tilt from slopes before reconstruction, and re-apply
+them after reconstruction. (default is to use <code class="docutils literal"><span class="pre">suppress_tt</span></code>)</p>
+</div></blockquote>
+<p><strong>suppress_tt: bool, optional</strong></p>
+<blockquote class="last">
+<div><p>Remove tip and tilt from slopes, and don&#8217;t re-apply after
+reconstruction. (default is False)</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>The Fourier Transform Reconstructor implements the reconstruction scheme
+described in chapter 2 of Lisa Poyneer&#8217;s dissertation. <a class="reference internal" href="#r3" id="id1">[R3]</a> The
+implementation of the Fourier Transform Reconstructor depends on a pair of
+spatial filters (x and y) which relate the specific geometry of the
+wavefront sensor to the phase estimation points. Common spatial filters are
+the &#8220;modified Hudgins&#8221; filter, <code class="docutils literal"><span class="pre">mod_hud</span></code>, and the Fried geometry
+<code class="docutils literal"><span class="pre">fried</span></code>. Additional named filters can be registered with this class using
+<a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.register" title="FTR.ftr.FourierTransformReconstructor.register"><code class="xref py py-meth docutils literal"><span class="pre">register()</span></code></a>, or an entirely custom
+filter can be used by modifying the <a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.gx" title="FTR.ftr.FourierTransformReconstructor.gx"><code class="xref py py-attr docutils literal"><span class="pre">gx</span></code></a> and <a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.gy" title="FTR.ftr.FourierTransformReconstructor.gy"><code class="xref py py-attr docutils literal"><span class="pre">gy</span></code></a> attributes.</p>
+<p class="rubric">References</p>
+<table class="docutils citation" frame="void" id="r3" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label">[R3]</td><td><em>(<a class="fn-backref" href="#id1">1</a>, <a class="fn-backref" href="#id2">2</a>)</em> Poyneer, L. A. Signal processing for high-precision wavefront
+control in adaptive optics. (Thesis (Ph.D.) - University of California,
+2007).</td></tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<p>Creating a generic reconstructor will result in an uninitialized filter:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">aperture</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">recon</span> <span class="o">=</span> <span class="n">FourierTransformReconstructor</span><span class="p">(</span><span class="n">aperture</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">recon</span>
+<span class="go">&lt;FourierTransformReconstructor (10x10) filter=&#39;Unknown&#39;&gt;</span>
+</pre></div>
+</div>
+<p>You can create a reconstructor with a named filter:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">aperture</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">recon</span> <span class="o">=</span> <span class="n">FourierTransformReconstructor</span><span class="p">(</span><span class="n">aperture</span><span class="p">,</span> <span class="s">&quot;fried&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">recon</span>
+<span class="go">&lt;FourierTransformReconstructor (10x10) filter=&#39;fried&#39;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ys</span><span class="p">,</span> <span class="n">xs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">recon</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
+<span class="go">array([...])</span>
+</pre></div>
+</div>
+<p class="rubric">Attributes Summary</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.ap" title="FTR.ftr.FourierTransformReconstructor.ap"><code class="xref py py-obj docutils literal"><span class="pre">ap</span></code></a></td>
+<td>The aperture, a boolean numpy array.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.denominator" title="FTR.ftr.FourierTransformReconstructor.denominator"><code class="xref py py-obj docutils literal"><span class="pre">denominator</span></code></a></td>
+<td>Filter denominator</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.filter" title="FTR.ftr.FourierTransformReconstructor.filter"><code class="xref py py-obj docutils literal"><span class="pre">filter</span></code></a></td>
+<td>The filter components, as a <a class="reference internal" href="FTR.ftr.FTRFilter.html#FTR.ftr.FTRFilter" title="FTR.ftr.FTRFilter"><code class="xref py py-class docutils literal"><span class="pre">FTRFilter</span></code></a> tuple.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.gx" title="FTR.ftr.FourierTransformReconstructor.gx"><code class="xref py py-obj docutils literal"><span class="pre">gx</span></code></a></td>
+<td>The x spatial filter.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.gy" title="FTR.ftr.FourierTransformReconstructor.gy"><code class="xref py py-obj docutils literal"><span class="pre">gy</span></code></a></td>
+<td>The y filter.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.name" title="FTR.ftr.FourierTransformReconstructor.name"><code class="xref py py-obj docutils literal"><span class="pre">name</span></code></a></td>
+<td>Filter name</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.shape" title="FTR.ftr.FourierTransformReconstructor.shape"><code class="xref py py-obj docutils literal"><span class="pre">shape</span></code></a></td>
+<td>Shape of the reconstructed grid.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.tt_mode" title="FTR.ftr.FourierTransformReconstructor.tt_mode"><code class="xref py py-obj docutils literal"><span class="pre">tt_mode</span></code></a></td>
+<td>Tip/tilt management mode.</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods Summary</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.apply_filter" title="FTR.ftr.FourierTransformReconstructor.apply_filter"><code class="xref py py-obj docutils literal"><span class="pre">apply_filter</span></code></a>(xs_ft,&nbsp;ys_ft)</td>
+<td>Apply the filter to the FFT&#8217;d values.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.filters" title="FTR.ftr.FourierTransformReconstructor.filters"><code class="xref py py-obj docutils literal"><span class="pre">filters</span></code></a>()</td>
+<td>Return the list of registered filter names.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.get" title="FTR.ftr.FourierTransformReconstructor.get"><code class="xref py py-obj docutils literal"><span class="pre">get</span></code></a>(filter,&nbsp;shape)</td>
+<td>Get a filter tuple by name from the filter registry.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.reconstruct" title="FTR.ftr.FourierTransformReconstructor.reconstruct"><code class="xref py py-obj docutils literal"><span class="pre">reconstruct</span></code></a>(xs,&nbsp;ys[,&nbsp;manage_tt,&nbsp;suppress_tt])</td>
+<td>Use the Fourier transform and spatial filters to reconstruct an estimate of the phase.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.register" title="FTR.ftr.FourierTransformReconstructor.register"><code class="xref py py-obj docutils literal"><span class="pre">register</span></code></a>(name[,&nbsp;filter])</td>
+<td>Register a filter generating function.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.use" title="FTR.ftr.FourierTransformReconstructor.use"><code class="xref py py-obj docutils literal"><span class="pre">use</span></code></a>(filter)</td>
+<td>Use a particular spatial filter for reconstruction.</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes Documentation</p>
+<dl class="attribute">
+<dt id="FTR.ftr.FourierTransformReconstructor.ap">
+<code class="descname">ap</code><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor.ap" title="Permalink to this definition">¶</a></dt>
+<dd><p>The aperture, a boolean numpy array.</p>
+<p>The aperture is used to compute tip and tilt removal from the Fourier Transform Reconstructor.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="FTR.ftr.FourierTransformReconstructor.denominator">
+<code class="descname">denominator</code><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor.denominator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filter denominator</p>
+<p>This term normalizes for the magnitude of the individual spatial
+filters. It is recomputed whenever the filters change, but it is
+otherwise computed only once for each set of filters.</p>
+<p>The equation used is</p>
+<div class="math">
+<p><img src="../_images/math/35e79cf8cb3b6aeed2a27a63b2a052239f16a62e.png" alt="|G_{wx}|^{2} + |G_{wy}|^2"/></p>
+</div></dd></dl>
+
+<dl class="attribute">
+<dt id="FTR.ftr.FourierTransformReconstructor.filter">
+<code class="descname">filter</code><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor.filter" title="Permalink to this definition">¶</a></dt>
+<dd><p>The filter components, as a <a class="reference internal" href="FTR.ftr.FTRFilter.html#FTR.ftr.FTRFilter" title="FTR.ftr.FTRFilter"><code class="xref py py-class docutils literal"><span class="pre">FTRFilter</span></code></a> tuple.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="FTR.ftr.FourierTransformReconstructor.gx">
+<code class="descname">gx</code><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor.gx" title="Permalink to this definition">¶</a></dt>
+<dd><p>The x spatial filter.</p>
+<p><img class="math" src="../_images/math/a158fba650cd4a7e949e4d906be261aea005ac2a.png" alt="G_{wx}"/> in the equation implemented in <a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.apply_filter" title="FTR.ftr.FourierTransformReconstructor.apply_filter"><code class="xref py py-meth docutils literal"><span class="pre">apply_filter()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="FTR.ftr.FourierTransformReconstructor.gy">
+<code class="descname">gy</code><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor.gy" title="Permalink to this definition">¶</a></dt>
+<dd><p>The y filter.</p>
+<p><img class="math" src="../_images/math/743fa95601637606f8f230f311f85d650c996bc9.png" alt="G_{wy}"/> in the equation implemented in <a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.apply_filter" title="FTR.ftr.FourierTransformReconstructor.apply_filter"><code class="xref py py-meth docutils literal"><span class="pre">apply_filter()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="FTR.ftr.FourierTransformReconstructor.name">
+<code class="descname">name</code><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filter name</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="FTR.ftr.FourierTransformReconstructor.shape">
+<code class="descname">shape</code><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor.shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shape of the reconstructed grid.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="FTR.ftr.FourierTransformReconstructor.tt_mode">
+<code class="descname">tt_mode</code><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor.tt_mode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tip/tilt management mode.</p>
+<p>Returns a string representation of the tip/tilt management mode, useful
+for the representation of this object.</p>
+</dd></dl>
+
+<p class="rubric">Methods Documentation</p>
+<dl class="method">
+<dt id="FTR.ftr.FourierTransformReconstructor.apply_filter">
+<code class="descname">apply_filter</code><span class="sig-paren">(</span><em>xs_ft</em>, <em>ys_ft</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/FTR/ftr.html#FourierTransformReconstructor.apply_filter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor.apply_filter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply the filter to the FFT&#8217;d values.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>xs_ft</strong> : array_like</p>
+<blockquote>
+<div><p>The fourier transform of the x slopes</p>
+</div></blockquote>
+<p><strong>ys_ft</strong> : array_like</p>
+<blockquote>
+<div><p>The fourier transform of the y slopes</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>est_ft</strong> : array_like</p>
+<blockquote class="last">
+<div><p>The fourier transform of the phase estimate.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>This implements the equation</p>
+<div class="math">
+<p><img src="../_images/math/7c0d0a504a4661b632c935c99c3eaaf85730fffa.png" alt="\hat{\Phi} = \frac{G_{wx}^{*} X + 
+G_{wy}^{*} Y}{|G_{wx}|^{2} + |G_{wy}|^2}"/></p>
+</div></dd></dl>
+
+<dl class="classmethod">
+<dt id="FTR.ftr.FourierTransformReconstructor.filters">
+<em class="property">classmethod </em><code class="descname">filters</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/FTR/ftr.html#FourierTransformReconstructor.filters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor.filters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the list of registered filter names.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="FTR.ftr.FourierTransformReconstructor.get">
+<em class="property">classmethod </em><code class="descname">get</code><span class="sig-paren">(</span><em>filter</em>, <em>shape</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/FTR/ftr.html#FourierTransformReconstructor.get"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a filter tuple by name from the filter registry.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>filter</strong> : str</p>
+<blockquote>
+<div><p>The filter name, as it was registered with <a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.register" title="FTR.ftr.FourierTransformReconstructor.register"><code class="xref py py-meth docutils literal"><span class="pre">register()</span></code></a></p>
+</div></blockquote>
+<p><strong>shape</strong> : tuple of ints</p>
+<blockquote>
+<div><p>The shape of the desired filter.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>gx</strong> : array_like</p>
+<blockquote>
+<div><p>The x spatial filter</p>
+</div></blockquote>
+<p><strong>gy</strong> : array_like</p>
+<blockquote>
+<div><p>The y spatial filter</p>
+</div></blockquote>
+<p><strong>name</strong> : str</p>
+<blockquote class="last">
+<div><p>The filter name</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FTR.ftr.FourierTransformReconstructor.reconstruct">
+<code class="descname">reconstruct</code><span class="sig-paren">(</span><em>xs</em>, <em>ys</em>, <em>manage_tt=False</em>, <em>suppress_tt=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/FTR/ftr.html#FourierTransformReconstructor.reconstruct"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor.reconstruct" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use the Fourier transform and spatial filters to reconstruct an
+estimate of the phase.</p>
+<p>Instead of using this method directly, call the instnace itself
+to ensure that settings are correctly obeyed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>xs</strong> : array_like</p>
+<blockquote>
+<div><p>The x slopes</p>
+</div></blockquote>
+<p><strong>ys</strong> : array_like</p>
+<blockquote>
+<div><p>The y slopes</p>
+</div></blockquote>
+<p><strong>manage_tt</strong> : bool</p>
+<blockquote>
+<div><p>Whether to remove the tip/tilt from the slopes before reconstruction</p>
+</div></blockquote>
+<p><strong>suppress_tt</strong> : bool</p>
+<blockquote>
+<div><p>If set, do not re-apply the tip tilt after reconstruction.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>estimate</strong> : array_like</p>
+<blockquote class="last">
+<div><p>An estimate of the phase across all the points
+where x and y slopes were measured.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>This method serves as the implementation for <code class="xref py py-meth docutils literal"><span class="pre">__call__()</span></code>.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="FTR.ftr.FourierTransformReconstructor.register">
+<em class="property">classmethod </em><code class="descname">register</code><span class="sig-paren">(</span><em>name</em>, <em>filter=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/FTR/ftr.html#FourierTransformReconstructor.register"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor.register" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a filter generating function.</p>
+<p>This classmethod can be used as a decorator.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : str</p>
+<blockquote>
+<div><p>The name of the filter to register</p>
+</div></blockquote>
+<p><strong>filter</strong> : callable</p>
+<blockquote class="last">
+<div><p>A callable which will return an <a class="reference internal" href="FTR.ftr.FTRFilter.html#FTR.ftr.FTRFilter" title="FTR.ftr.FTRFilter"><code class="xref py py-class docutils literal"><span class="pre">FTRFilter</span></code></a>-compatible
+tuple when provided with the desired shape of the filter.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>To use this method as a decorator, simply provide the filter name:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="nd">@FourierTransformReconstructor.register</span><span class="p">(</span><span class="s">&quot;myfilter&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">my_filter_function</span><span class="p">(</span><span class="n">shape</span><span class="p">):</span>
+    <span class="o">...</span>
+    <span class="k">return</span> <span class="n">FTRFilter</span><span class="p">(</span><span class="n">gx</span><span class="p">,</span> <span class="n">gy</span><span class="p">,</span> <span class="s">&quot;myfilter&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="FTR.ftr.FourierTransformReconstructor.use">
+<code class="descname">use</code><span class="sig-paren">(</span><em>filter</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/FTR/ftr.html#FourierTransformReconstructor.use"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FTR.ftr.FourierTransformReconstructor.use" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use a particular spatial filter for reconstruction.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>filter</strong> : str</p>
+<blockquote class="last">
+<div><p>The filter name, as it was registered with <a class="reference internal" href="#FTR.ftr.FourierTransformReconstructor.register" title="FTR.ftr.FourierTransformReconstructor.register"><code class="xref py py-meth docutils literal"><span class="pre">register()</span></code></a></p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<p>You can create a reconstructor with one filter:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">aperture</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">recon</span> <span class="o">=</span> <span class="n">FourierTransformReconstructor</span><span class="p">(</span><span class="n">aperture</span><span class="p">,</span> <span class="s">&quot;fried&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">recon</span>
+<span class="go">&lt;FourierTransformReconstructor (10x10) filter=&#39;fried&#39;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">recon</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s">&quot;mod_hud&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">recon</span>
+<span class="go">&lt;FourierTransformReconstructor (10x10) filter=&#39;mod_hud&#39;&gt;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">FourierTransformReconstructor</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../_sources/api/FTR.ftr.FourierTransformReconstructor.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2015, Alex Rudy.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.1. &nbsp;
+    Last built 16 Oct 2015. <br/>
+  </p>
+</footer>
+  </body>
+</html>

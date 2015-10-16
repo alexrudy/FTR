@@ -1,0 +1,445 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>FTR.slopemanage &mdash; FTR v0.0.dev329</title>
+    
+    <link rel="stylesheet" href="../../_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.0.dev329',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="../../_static/astropy_logo.ico"/>
+    <link rel="top" title="FTR v0.0.dev329" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="../../_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">FTR</span><span id="logotext2">AO</span><span id="logotext3">:docs</span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../index.html">FTR v0.0.dev329</a>
+	 &raquo;
+      </li>
+      <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for FTR.slopemanage</h1><div class="highlight"><pre>
+<span class="c"># -*- coding: utf-8 -*-</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="p">(</span><span class="n">absolute_import</span><span class="p">,</span> <span class="n">unicode_literals</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span>
+                        <span class="n">print_function</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">from</span> <span class="nn">.ftr</span> <span class="kn">import</span> <span class="n">FourierTransformReconstructor</span>
+<span class="kn">from</span> <span class="nn">.libftr._slopemanage</span> <span class="kn">import</span> <span class="n">SlopeManager</span><span class="p">,</span> <span class="n">slope_management_fast</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">remove_piston</span><span class="p">,</span> <span class="n">apply_tiptilt</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;SlopeManagedFTR&#39;</span><span class="p">,</span> <span class="s">&#39;slope_management&#39;</span><span class="p">,</span> <span class="s">&#39;edge_extend&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="SlopeManagedFTR"><a class="viewcode-back" href="../../api/FTR.slopemanage.SlopeManagedFTR.html#FTR.slopemanage.SlopeManagedFTR">[docs]</a><span class="k">class</span> <span class="nc">SlopeManagedFTR</span><span class="p">(</span><span class="n">FourierTransformReconstructor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;An FTR Reconstructor with slope management to remove the effects of finite apertures.</span>
+<span class="sd">    </span>
+<span class="sd">    This class is a direct subclass of</span>
+<span class="sd">    :class:`~FTR.ftr.FourierTransformReconstructor`, see that class for</span>
+<span class="sd">    detailed method documentation.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ap : array_like</span>
+<span class="sd">        The aperture of valid measurement points, which also defines the</span>
+<span class="sd">        reconstructor shape used to generate filters.</span>
+<span class="sd">    filter : string_like, optional</span>
+<span class="sd">        The filter name to use. If not provided, it is expected that the user</span>
+<span class="sd">        will initialize :attr:`gx` and :attr:`gy` themselves.</span>
+<span class="sd">    manage_tt : bool, optional</span>
+<span class="sd">        Remove tip and tilt from slopes before reconstruction, and re-apply</span>
+<span class="sd">        them after reconstruction. (default is to use ``suppress_tt``)</span>
+<span class="sd">    suppress_tt : bool, optional</span>
+<span class="sd">        Remove tip and tilt from slopes, and don&#39;t re-apply after</span>
+<span class="sd">        reconstruction. (default is False)</span>
+<span class="sd">    extend : bool, optional</span>
+<span class="sd">        Use the &quot;edge extension&quot; method rather than the &quot;slope management&quot;</span>
+<span class="sd">        method. The &quot;slope management&quot; method was shown by Poyneer [1]_ to</span>
+<span class="sd">        have better error properties.</span>
+<span class="sd">    </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    </span>
+<span class="sd">    The Fourier transform reconstructor is described in the documentation for</span>
+<span class="sd">    :class:`~FTR.ftr.FourierTransformReconstructor`, which implements the pure</span>
+<span class="sd">    Fourier transform reconstructor. This subclass implements methods to correct</span>
+<span class="sd">    for finite aperture effects in the Fourier transform. </span>
+<span class="sd">    </span>
+<span class="sd">    </span>
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    .. [1] Poyneer, L. A. Signal processing for high-precision wavefront</span>
+<span class="sd">       control in adaptive optics. (Thesis (Ph.D.) - University of California,</span>
+<span class="sd">       2007).</span>
+<span class="sd">    </span>
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    </span>
+<span class="sd">    Creating a generic reconstructor will result in an uninitialized filter::</span>
+<span class="sd">        </span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; aperture = np.zeros((10,10), dtype=np.bool)</span>
+<span class="sd">        &gt;&gt;&gt; aperture[1:-2,1:-2] = True</span>
+<span class="sd">        &gt;&gt;&gt; recon = SlopeManagedFTR(aperture)</span>
+<span class="sd">        &gt;&gt;&gt; recon</span>
+<span class="sd">        &lt;SlopeManagedFTR (10x10) filter=&#39;Unknown&#39;&gt;</span>
+<span class="sd">        </span>
+<span class="sd">    </span>
+<span class="sd">    You can create a reconstructor with a named filter::</span>
+<span class="sd">        </span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; aperture = np.zeros((10,10), dtype=np.bool)</span>
+<span class="sd">        &gt;&gt;&gt; aperture[1:-2,1:-2] = True</span>
+<span class="sd">        &gt;&gt;&gt; recon = SlopeManagedFTR(aperture, &quot;fried&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; recon</span>
+<span class="sd">        &lt;SlopeManagedFTR (10x10) filter=&#39;fried&#39;&gt;</span>
+<span class="sd">        &gt;&gt;&gt; ys, xs = np.meshgrid(np.arange(10), np.arange(10))</span>
+<span class="sd">        &gt;&gt;&gt; recon(xs, ys)</span>
+<span class="sd">        array([...])</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">_ap</span> <span class="o">=</span> <span class="bp">None</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ap</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">manage_tt</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">suppress_tt</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">extend</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SlopeManagedFTR</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">ap</span><span class="o">=</span><span class="n">ap</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="nb">filter</span><span class="p">,</span> <span class="n">manage_tt</span><span class="o">=</span><span class="n">manage_tt</span><span class="p">,</span> <span class="n">suppress_tt</span><span class="o">=</span><span class="n">suppress_tt</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extend</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">extend</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="SlopeManagedFTR.reconstruct"><a class="viewcode-back" href="../../api/FTR.slopemanage.SlopeManagedFTR.html#FTR.slopemanage.SlopeManagedFTR.reconstruct">[docs]</a>    <span class="k">def</span> <span class="nf">reconstruct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">manage_tt</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">suppress_tt</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">extend</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Use the Fourier transform and spatial filters to reconstruct an</span>
+<span class="sd">        estimate of the phase.</span>
+<span class="sd">        </span>
+<span class="sd">        Instead of using this method directly, call the instnace itself</span>
+<span class="sd">        to ensure that settings are correctly obeyed.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        xs : array_like</span>
+<span class="sd">            The x slopes</span>
+<span class="sd">        ys : array_like</span>
+<span class="sd">            The y slopes</span>
+<span class="sd">        manage_tt : bool</span>
+<span class="sd">            Whether to remove the tip/tilt from the slopes before reconstruction</span>
+<span class="sd">        suppress_tt : bool</span>
+<span class="sd">            If set, do not re-apply the tip tilt after reconstruction.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        estimate : array_like</span>
+<span class="sd">            An estimate of the phase across all the points</span>
+<span class="sd">            where x and y slopes were measured.</span>
+<span class="sd">        </span>
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This method serves as the implementation for :meth:`__call__`.</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">manage_tt</span><span class="p">:</span>
+            <span class="n">xs</span><span class="p">,</span> <span class="n">xt</span> <span class="o">=</span> <span class="n">remove_piston</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ap</span><span class="p">,</span> <span class="n">xs</span><span class="p">)</span>
+            <span class="n">ys</span><span class="p">,</span> <span class="n">yt</span> <span class="o">=</span> <span class="n">remove_piston</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ap</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
+        
+        <span class="n">extend</span> <span class="o">=</span> <span class="n">extend</span> <span class="k">if</span> <span class="n">extend</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">extend</span>
+        <span class="k">if</span> <span class="n">extend</span><span class="p">:</span>
+            <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span> <span class="o">=</span> <span class="n">edge_extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ap</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span> <span class="o">=</span> <span class="n">_slope_management</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ap</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
+        
+        <span class="n">estimate</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">SlopeManagedFTR</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">reconstruct</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> 
+            <span class="n">manage_tt</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">suppress_tt</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">manage_tt</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">suppress_tt</span><span class="p">:</span>
+            <span class="n">estimate</span> <span class="o">=</span> <span class="n">apply_tiptilt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ap</span><span class="p">,</span> <span class="n">estimate</span><span class="p">,</span> <span class="n">xt</span><span class="p">,</span> <span class="n">yt</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">estimate</span>
+    
+</div></div>
+<span class="k">def</span> <span class="nf">_check_slopeargs</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Check arguments to the slope management function, and prepare them.&quot;&quot;&quot;</span>
+    <span class="n">ap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>
+    <span class="n">xs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+    <span class="n">ys</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">xs</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">xs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">xs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;slopemanage requires a square input slope array. xs.shape={0!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xs</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">xs</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">ys</span><span class="o">.</span><span class="n">shape</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;slopemanage requires the xs and ys to have the same shape. xs{0!r} != ys{1!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xs</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">ys</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">ap</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">xs</span><span class="o">.</span><span class="n">shape</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;slopemanage requires the aperture to have the same shape as xs and ys. xs{0!r} != ap{1!r}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xs</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">ap</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+    
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="s">&quot;ap xs ys&quot;</span><span class="o">.</span><span class="n">split</span><span class="p">(),[</span><span class="n">ap</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;slopemanage requires that {0} be finite.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
+
+<div class="viewcode-block" id="slope_management"><a class="viewcode-back" href="../../api/FTR.slopemanage.slope_management.html#FTR.slopemanage.slope_management">[docs]</a><span class="k">def</span> <span class="nf">slope_management</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Slope management for the fast fourier transform.</span>
+<span class="sd">    </span>
+<span class="sd">    The slopes must be within an aperture that has space on the edges for correction.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ap : array_like, boolean</span>
+<span class="sd">        The illuminated aperture of valid subapertures.</span>
+<span class="sd">    xs : array_like</span>
+<span class="sd">        The x slopes</span>
+<span class="sd">    ys : array_like</span>
+<span class="sd">        The y slopes</span>
+<span class="sd">    </span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xs_managed : array_like</span>
+<span class="sd">        The x slopes with the periodicity management applied.</span>
+<span class="sd">    ys_managed : array_like</span>
+<span class="sd">        The y slopes with the periodicity management applied.</span>
+<span class="sd">        </span>
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError :</span>
+<span class="sd">        Raised when the slopes grid is not adaquate for slope management.</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_slope_management</span><span class="p">(</span><span class="o">*</span><span class="n">_check_slopeargs</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">))</span>
+    </div>
+<span class="k">def</span> <span class="nf">_slope_management</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This method implements :func:`slope_management`, but without argument checking, useful for the reconstructor.&quot;&quot;&quot;</span>
+    
+    <span class="n">n</span> <span class="o">=</span> <span class="n">xs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="n">xs_s</span> <span class="o">=</span> <span class="n">xs</span> <span class="o">*</span> <span class="n">ap</span>
+    <span class="n">ys_s</span> <span class="o">=</span> <span class="n">ys</span> <span class="o">*</span> <span class="n">ap</span>
+    
+    <span class="n">xs_c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">xs_s</span><span class="p">)</span>
+    <span class="n">ys_c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">ys_s</span><span class="p">)</span>
+    
+    <span class="n">ysr_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ys_s</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">apr_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="n">xsc_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">xs_s</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">apc_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">apr_sum</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">loc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">ap</span><span class="p">[:,</span><span class="n">j</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">left</span> <span class="o">=</span> <span class="n">loc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">right</span> <span class="o">=</span> <span class="n">loc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            
+            <span class="k">if</span> <span class="n">left</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Not enough space to edge correct, row {j} starts at k={k}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">j</span><span class="o">=</span><span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">right</span> <span class="o">==</span> <span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Not enough space to edge correct, row {j} ends at k={k}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">j</span><span class="o">=</span><span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">n</span><span class="p">))</span>
+            
+            <span class="n">ys_c</span><span class="p">[</span><span class="n">left</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>  <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">ysr_sum</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+            <span class="n">ys_c</span><span class="p">[</span><span class="n">right</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">ysr_sum</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="n">apc_sum</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">loc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">ap</span><span class="p">[</span><span class="n">j</span><span class="p">,:]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">bottom</span> <span class="o">=</span> <span class="n">loc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">top</span> <span class="o">=</span> <span class="n">loc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            
+            <span class="k">if</span> <span class="n">bottom</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Not enough space to edge correct, column {j} starts at k={k}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">j</span><span class="o">=</span><span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">top</span> <span class="o">==</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Not enough space to edge correct, column {j} ends at k={k}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">j</span><span class="o">=</span><span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">n</span><span class="p">))</span>
+            
+            <span class="n">xs_c</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="n">bottom</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">xsc_sum</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+            <span class="n">xs_c</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="n">top</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>    <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">xsc_sum</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+            
+    <span class="k">return</span> <span class="p">(</span><span class="n">xs_c</span><span class="p">,</span> <span class="n">ys_c</span><span class="p">)</span>
+    
+    
+<div class="viewcode-block" id="edge_extend"><a class="viewcode-back" href="../../api/FTR.slopemanage.edge_extend.html#FTR.slopemanage.edge_extend">[docs]</a><span class="k">def</span> <span class="nf">edge_extend</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Edge Extension for the fast fourier transform.</span>
+<span class="sd">    </span>
+<span class="sd">    :param ap: The aperture, as a boolean mask.</span>
+<span class="sd">    :param xs: The x slopes.</span>
+<span class="sd">    :param ys: The y slopes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;Edge Extend is broken right now! Don&#39;t trust it!&quot;</span><span class="p">)</span>
+    <span class="n">ap</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span> <span class="o">=</span> <span class="n">_check_slopeargs</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
+    
+    <span class="n">n</span> <span class="o">=</span> <span class="n">ap</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="n">xs_ap</span> <span class="o">=</span> <span class="n">ap</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">ys_ap</span> <span class="o">=</span> <span class="n">ap</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">xs_sap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">ys_sap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    
+    <span class="n">loop</span> <span class="o">=</span> <span class="n">xs_ap</span> <span class="o">+</span> <span class="n">ys_ap</span> <span class="o">+</span> <span class="n">xs_sap</span> <span class="o">+</span> <span class="n">ys_sap</span>
+    
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">loop</span><span class="p">[</span><span class="n">k</span><span class="p">,</span><span class="n">l</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="n">flag</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">for</span> <span class="n">flval</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">([</span><span class="n">xs_ap</span><span class="p">,</span> <span class="n">xs_sap</span><span class="p">,</span> <span class="n">ys_ap</span><span class="p">,</span> <span class="n">ys_sap</span><span class="p">]):</span>
+                    <span class="k">if</span> <span class="n">arr</span><span class="p">[</span><span class="n">k</span><span class="p">,</span><span class="n">l</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">flag</span> <span class="o">=</span> <span class="n">flval</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">flag</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">total</span> <span class="o">=</span> <span class="n">total</span> <span class="o">+</span> <span class="n">xs</span><span class="p">[</span><span class="n">k</span><span class="p">,</span><span class="n">l</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">flag</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="n">total</span> <span class="o">=</span> <span class="n">total</span> <span class="o">-</span> <span class="n">xs</span><span class="p">[</span><span class="n">k</span><span class="p">,</span><span class="n">l</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">flag</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+                    <span class="n">total</span> <span class="o">=</span> <span class="n">total</span> <span class="o">-</span> <span class="n">ys</span><span class="p">[</span><span class="n">k</span><span class="p">,</span><span class="n">l</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">flag</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
+                    <span class="n">total</span> <span class="o">=</span> <span class="n">total</span> <span class="o">+</span> <span class="n">ys</span><span class="p">[</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="n">l</span><span class="p">]</span>
+                
+                <span class="k">if</span> <span class="n">flag</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">xs</span><span class="p">[</span><span class="n">k</span><span class="p">,</span><span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">total</span>
+                    <span class="n">xs_ap</span><span class="p">[</span><span class="n">k</span><span class="p">,</span><span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="k">elif</span> <span class="n">flag</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="n">xs</span><span class="p">[</span><span class="n">k</span><span class="p">,</span><span class="n">l</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">total</span>
+                    <span class="n">xs_ap</span><span class="p">[</span><span class="n">k</span><span class="p">,</span><span class="n">l</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="k">elif</span> <span class="n">flag</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                    <span class="n">ys</span><span class="p">[</span><span class="n">k</span><span class="p">,</span><span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="n">total</span>
+                    <span class="n">ys_ap</span><span class="p">[</span><span class="n">k</span><span class="p">,</span><span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="k">elif</span> <span class="n">flag</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+                    <span class="n">ys</span><span class="p">[</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">total</span>
+                    <span class="n">ys_ap</span><span class="p">[</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    
+    <span class="n">xout</span> <span class="o">=</span> <span class="o">~</span><span class="n">xs_ap</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+    <span class="n">yout</span> <span class="o">=</span> <span class="o">~</span><span class="n">ys_ap</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+    
+    <span class="n">xtop0</span> <span class="o">=</span> <span class="n">xs_ap</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">yleft0</span> <span class="o">=</span> <span class="n">ys_ap</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">xbot0</span> <span class="o">=</span> <span class="n">xs_ap</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">yright0</span> <span class="o">=</span> <span class="n">ys_ap</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="n">xtop</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">ap</span><span class="p">)</span>
+    <span class="n">yleft</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">ap</span><span class="p">)</span>
+    <span class="n">xbot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">ap</span><span class="p">)</span>
+    <span class="n">yright</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">ap</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="n">found1</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">found2</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">found3</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">found4</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="n">l2</span> <span class="o">=</span> <span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="n">l</span>
+            <span class="k">if</span> <span class="n">found1</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">xtop0</span><span class="p">[</span><span class="n">k</span><span class="p">,</span><span class="n">l</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">xtop</span><span class="p">[</span><span class="n">k</span><span class="p">,</span><span class="n">l</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+                    <span class="n">found1</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">found2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">xbot0</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">l2</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">xbot</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">l2</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+                    <span class="n">found2</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">found3</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">yleft0</span><span class="p">[</span><span class="n">l</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">yleft</span><span class="p">[</span><span class="n">l</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="n">found3</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">found4</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">yright0</span><span class="p">[</span><span class="n">l2</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">yright</span><span class="p">[</span><span class="n">l2</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="n">found4</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="n">toploc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">xtop</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="p">:]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">toploc</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">xs</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">toploc</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">toploc</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="n">xs</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+                <span class="n">xs_ap</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">botloc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">xbot</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="p">:]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">botloc</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">xs</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">botloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">botloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+                <span class="n">xs</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+                <span class="n">xs_ap</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">l</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">leftloc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">yleft</span><span class="p">[:,</span><span class="n">k</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">leftloc</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">ys</span><span class="p">[</span><span class="n">leftloc</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">k</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">leftloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="n">ys</span><span class="p">[</span><span class="n">l</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+                <span class="n">ys_ap</span><span class="p">[</span><span class="n">l</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">rightloc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">yright</span><span class="p">[:,</span><span class="n">k</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rightloc</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">ys</span><span class="p">[</span><span class="n">rightloc</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">k</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">rightloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+                <span class="n">ys</span><span class="p">[</span><span class="n">l</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+                <span class="n">ys_ap</span><span class="p">[</span><span class="n">l</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="n">xs</span><span class="p">[</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span> <span class="n">xs</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">ys</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span> <span class="n">ys</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        
+    <span class="k">return</span> <span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2015, Alex Rudy.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.1. &nbsp;
+    Last built 16 Oct 2015. <br/>
+  </p>
+</footer>
+  </body>
+</html>

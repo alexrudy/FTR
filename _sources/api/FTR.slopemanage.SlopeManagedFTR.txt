@@ -1,0 +1,44 @@
+
+
+SlopeManagedFTR
+===============================
+
+.. currentmodule:: FTR.slopemanage
+
+.. autoclass:: SlopeManagedFTR
+   :show-inheritance:
+
+   
+     
+   
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+   
+      ~SlopeManagedFTR.reconstruct
+
+   
+   
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods Documentation
+
+   
+   .. automethod:: reconstruct
+
+   
+   

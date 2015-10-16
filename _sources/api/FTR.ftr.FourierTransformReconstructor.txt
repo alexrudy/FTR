@@ -1,0 +1,83 @@
+
+
+FourierTransformReconstructor
+=====================================
+
+.. currentmodule:: FTR.ftr
+
+.. autoclass:: FourierTransformReconstructor
+   :show-inheritance:
+
+   
+     
+   
+
+   
+   
+
+   .. rubric:: Attributes Summary
+
+   .. autosummary::
+   
+      ~FourierTransformReconstructor.ap
+      ~FourierTransformReconstructor.denominator
+      ~FourierTransformReconstructor.filter
+      ~FourierTransformReconstructor.gx
+      ~FourierTransformReconstructor.gy
+      ~FourierTransformReconstructor.name
+      ~FourierTransformReconstructor.shape
+      ~FourierTransformReconstructor.tt_mode
+
+   
+   
+
+   
+   
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+   
+      ~FourierTransformReconstructor.apply_filter
+      ~FourierTransformReconstructor.filters
+      ~FourierTransformReconstructor.get
+      ~FourierTransformReconstructor.reconstruct
+      ~FourierTransformReconstructor.register
+      ~FourierTransformReconstructor.use
+
+   
+   
+
+   
+   
+
+   .. rubric:: Attributes Documentation
+
+   
+   .. autoattribute:: ap
+   .. autoattribute:: denominator
+   .. autoattribute:: filter
+   .. autoattribute:: gx
+   .. autoattribute:: gy
+   .. autoattribute:: name
+   .. autoattribute:: shape
+   .. autoattribute:: tt_mode
+
+   
+   
+
+   
+   
+
+   .. rubric:: Methods Documentation
+
+   
+   .. automethod:: apply_filter
+   .. automethod:: filters
+   .. automethod:: get
+   .. automethod:: reconstruct
+   .. automethod:: register
+   .. automethod:: use
+
+   
+   

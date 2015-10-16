@@ -1,0 +1,8 @@
+
+
+ideal_filter
+====================
+
+.. currentmodule:: FTR.ftr
+
+.. autofunction:: ideal_filter

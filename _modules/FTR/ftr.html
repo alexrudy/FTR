@@ -1,0 +1,757 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>FTR.ftr &mdash; FTR v0.0.dev329</title>
+    
+    <link rel="stylesheet" href="../../_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.0.dev329',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="../../_static/astropy_logo.ico"/>
+    <link rel="top" title="FTR v0.0.dev329" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="../../_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">FTR</span><span id="logotext2">AO</span><span id="logotext3">:docs</span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../index.html">FTR v0.0.dev329</a>
+	 &raquo;
+      </li>
+      <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for FTR.ftr</h1><div class="highlight"><pre>
+<span class="c"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The fourier transform reconstructor converts slopes (x and y slope grids) to</span>
+<span class="sd">phase values. The reconstruction works using the fourier transform of the x</span>
+<span class="sd">and y slopes, and applying a filter, which accounts for the way in which those</span>
+<span class="sd">slopes map to phase.</span>
+
+<span class="sd">The concept for the reconstructor, and the filters documented here, are taken</span>
+<span class="sd">from Lisa Poyneer&#39;s 2007 dissertaiton.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="p">(</span><span class="n">absolute_import</span><span class="p">,</span> <span class="n">unicode_literals</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span>
+                        <span class="n">print_function</span><span class="p">)</span>
+
+<span class="c"># Python Imports</span>
+<span class="kn">import</span> <span class="nn">abc</span>
+<span class="kn">import</span> <span class="nn">six</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+
+<span class="c"># Scientific Python Imports</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">scipy.fftpack</span> <span class="kn">as</span> <span class="nn">fftpack</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">numpy.fft</span> <span class="kn">as</span> <span class="nn">fftpack</span>
+
+<span class="kn">from</span> <span class="nn">astropy.utils</span> <span class="kn">import</span> <span class="n">lazyproperty</span>
+
+<span class="c"># Local imports</span>
+<span class="kn">from</span> <span class="nn">.base</span> <span class="kn">import</span> <span class="n">Reconstructor</span>
+<span class="kn">from</span> <span class="nn">.libftr._ftr</span> <span class="kn">import</span> <span class="n">CFTRBase</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="p">(</span><span class="n">complexmp</span><span class="p">,</span> <span class="n">ignoredivide</span><span class="p">,</span> <span class="n">remove_piston</span><span class="p">,</span> <span class="n">remove_tiptilt</span><span class="p">,</span> 
+    <span class="n">fftgrid</span><span class="p">,</span> <span class="n">shapegrid</span><span class="p">,</span> <span class="n">shapestr</span><span class="p">,</span> <span class="n">apply_tiptilt</span><span class="p">)</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;FTRFilter&#39;</span><span class="p">,</span> <span class="s">&#39;FourierTransformReconstructor&#39;</span><span class="p">,</span> <span class="s">&#39;FastFTReconstructor&#39;</span><span class="p">,</span> <span class="s">&#39;mod_hud_filter&#39;</span><span class="p">,</span> <span class="s">&#39;fried_filter&#39;</span><span class="p">,</span> <span class="s">&#39;ideal_filter&#39;</span><span class="p">,</span> <span class="s">&#39;inplace_filter&#39;</span><span class="p">,</span> <span class="s">&#39;hud_filter&#39;</span><span class="p">]</span>
+
+<span class="n">FTRFilter</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s">&quot;FTRFilter&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s">&quot;gx&quot;</span><span class="p">,</span> <span class="s">&quot;gy&quot;</span><span class="p">,</span> <span class="s">&quot;name&quot;</span><span class="p">])</span>
+<span class="k">if</span> <span class="n">six</span><span class="o">.</span><span class="n">PY3</span><span class="p">:</span>
+    <span class="n">FTRFilter</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">    FTRFilter(gx,gy,name)</span>
+
+<span class="s">    Tuple collection of filter values.</span>
+<span class="s">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="FourierTransformReconstructor"><a class="viewcode-back" href="../../api/FTR.ftr.FourierTransformReconstructor.html#FTR.ftr.FourierTransformReconstructor">[docs]</a><span class="k">class</span> <span class="nc">FourierTransformReconstructor</span><span class="p">(</span><span class="n">Reconstructor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A reconstructor which uses the fourier transform to turn slopes into an</span>
+<span class="sd">    estiate of the wavefront phase.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ap: array_like</span>
+<span class="sd">        The aperture of valid measurement points, which also defines the</span>
+<span class="sd">        reconstructor shape used to generate filters.</span>
+<span class="sd">    filter: string_like, optional</span>
+<span class="sd">        The filter name to use. If not provided, it is expected that the user</span>
+<span class="sd">        will initialize :attr:`gx` and :attr:`gy` themselves.</span>
+<span class="sd">    manage_tt: bool, optional</span>
+<span class="sd">        Remove tip and tilt from slopes before reconstruction, and re-apply</span>
+<span class="sd">        them after reconstruction. (default is to use ``suppress_tt``)</span>
+<span class="sd">    suppress_tt: bool, optional</span>
+<span class="sd">        Remove tip and tilt from slopes, and don&#39;t re-apply after</span>
+<span class="sd">        reconstruction. (default is False)</span>
+<span class="sd">        </span>
+<span class="sd">    </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    </span>
+<span class="sd">    The Fourier Transform Reconstructor implements the reconstruction scheme</span>
+<span class="sd">    described in chapter 2 of Lisa Poyneer&#39;s dissertation. [1]_ The</span>
+<span class="sd">    implementation of the Fourier Transform Reconstructor depends on a pair of</span>
+<span class="sd">    spatial filters (x and y) which relate the specific geometry of the</span>
+<span class="sd">    wavefront sensor to the phase estimation points. Common spatial filters are</span>
+<span class="sd">    the &quot;modified Hudgins&quot; filter, ``mod_hud``, and the Fried geometry</span>
+<span class="sd">    ``fried``. Additional named filters can be registered with this class using</span>
+<span class="sd">    :meth:`~FourierTransformReconstructor.register`, or an entirely custom</span>
+<span class="sd">    filter can be used by modifying the :attr:`gx` and :attr:`gy` attributes.</span>
+<span class="sd">    </span>
+<span class="sd">    </span>
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    </span>
+<span class="sd">    .. [1] Poyneer, L. A. Signal processing for high-precision wavefront</span>
+<span class="sd">       control in adaptive optics. (Thesis (Ph.D.) - University of California,</span>
+<span class="sd">       2007).</span>
+<span class="sd">    </span>
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    </span>
+<span class="sd">    Creating a generic reconstructor will result in an uninitialized filter::</span>
+<span class="sd">        </span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; aperture = np.ones((10,10))</span>
+<span class="sd">        &gt;&gt;&gt; recon = FourierTransformReconstructor(aperture)</span>
+<span class="sd">        &gt;&gt;&gt; recon</span>
+<span class="sd">        &lt;FourierTransformReconstructor (10x10) filter=&#39;Unknown&#39;&gt;</span>
+<span class="sd">        </span>
+<span class="sd">    </span>
+<span class="sd">    You can create a reconstructor with a named filter::</span>
+<span class="sd">        </span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; aperture = np.ones((10,10))</span>
+<span class="sd">        &gt;&gt;&gt; recon = FourierTransformReconstructor(aperture, &quot;fried&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; recon</span>
+<span class="sd">        &lt;FourierTransformReconstructor (10x10) filter=&#39;fried&#39;&gt;</span>
+<span class="sd">        &gt;&gt;&gt; ys, xs = np.meshgrid(np.arange(10), np.arange(10))</span>
+<span class="sd">        &gt;&gt;&gt; recon(xs, ys)</span>
+<span class="sd">        array([...])</span>
+<span class="sd">    </span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">_gx</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">_gy</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">_n</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">_dzero</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">_filtername</span> <span class="o">=</span> <span class="s">&quot;UNDEFINED&quot;</span>
+    <span class="n">_denominator</span> <span class="o">=</span> <span class="bp">None</span>
+    
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Represent this object.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s">&quot;&lt;{0} {1} filter=&#39;{2}&#39;{3}&gt;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">shapestr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s">&quot;&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tt_mode</span> <span class="o">==</span> <span class="s">&quot;unmanaged&quot;</span> <span class="k">else</span> <span class="s">&quot; tt=&#39;{0}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tt_mode</span><span class="p">))</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ap</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">manage_tt</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">suppress_tt</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">FourierTransformReconstructor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="n">ap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span> <span class="o">=</span> <span class="n">ap</span><span class="o">.</span><span class="n">shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ap</span> <span class="o">=</span> <span class="n">ap</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_filtername</span> <span class="o">=</span> <span class="s">&quot;Unknown&quot;</span>
+        <span class="k">if</span> <span class="nb">filter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="n">six</span><span class="o">.</span><span class="n">text_type</span><span class="p">(</span><span class="nb">filter</span><span class="p">))</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">suppress_tt</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">suppress_tt</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">manage_tt</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manage_tt</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">suppress_tt</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">suppress_tt</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">suppress_tt</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manage_tt</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">manage_tt</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">suppress_tt</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">manage_tt</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;{0:s}: Can&#39;t specify manage_tt=False and &quot;</span>
+                <span class="s">&quot;suppress_tt=True, as tip/tilt will not be suppressed when &quot;</span>
+                <span class="s">&quot;tip-tilt isn&#39;t removed from the slopes initially.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">suppress_tt</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">shapegrid</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Filter name&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filtername</span>
+        
+    <span class="nd">@name.setter</span>
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the filter name.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_REGISTRY</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_filtername</span> <span class="o">=</span> <span class="n">value</span>
+        
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">filter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The filter components, as a :class:`FTRFilter` tuple.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">FTRFilter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Shape of the reconstructed grid.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span>
+        
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">gx</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The x spatial filter.</span>
+<span class="sd">        </span>
+<span class="sd">        :math:`G_{wx}` in the equation implemented in :meth:`apply_filter`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gx</span>
+        
+    <span class="nd">@gx.setter</span>
+    <span class="k">def</span> <span class="nf">gx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gx</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the x filter&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_filter</span><span class="p">(</span><span class="n">gx</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_denominator</span> <span class="o">=</span> <span class="bp">None</span>
+        
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">gy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The y filter.</span>
+<span class="sd">        </span>
+<span class="sd">        :math:`G_{wy}` in the equation implemented in :meth:`apply_filter`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gy</span>
+        
+    <span class="nd">@gy.setter</span>
+    <span class="k">def</span> <span class="nf">gy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gy</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set and validate the y filter&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_filter</span><span class="p">(</span><span class="n">gy</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_denominator</span> <span class="o">=</span> <span class="bp">None</span>
+        
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">ap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The aperture, a boolean numpy array.</span>
+<span class="sd">        </span>
+<span class="sd">        The aperture is used to compute tip and tilt removal from the Fourier Transform Reconstructor.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ap</span>
+        
+    <span class="nd">@ap.setter</span>
+    <span class="k">def</span> <span class="nf">ap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Validate aperture.&quot;&quot;&quot;</span>
+        <span class="n">ap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ap</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Aperture should be same shape as input data. Found {0!r}, expected {1!r}.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ap</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ap</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Aperture must be illuminated somewhere!&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ap</span> <span class="o">=</span> <span class="n">ap</span>
+        
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">tt_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Tip/tilt management mode.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns a string representation of the tip/tilt management mode, useful</span>
+<span class="sd">        for the representation of this object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">manage_tt</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;unmanaged&quot;</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">manage_tt</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">suppress_tt</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;managed&quot;</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">manage_tt</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">suppress_tt</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;suppressed&quot;</span>
+        
+    <span class="k">def</span> <span class="nf">_validate_filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_filter</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Ensure that a filter is the correct shape.</span>
+<span class="sd">        </span>
+<span class="sd">        This method checks the shape and that the filter is all finite.</span>
+<span class="sd">        </span>
+<span class="sd">        :param _filter: The filter array to check.</span>
+<span class="sd">        :returns: The filter, correctly typed and checked for consistency.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">gf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">_filter</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">complex</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">gf</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Filter should be same shape as input data. Found {0!r}, expected {1!r}.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">gf</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">gf</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Filter must be finite at all points!&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">gf</span>
+        
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">denominator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Filter denominator</span>
+<span class="sd">        </span>
+<span class="sd">        This term normalizes for the magnitude of the individual spatial</span>
+<span class="sd">        filters. It is recomputed whenever the filters change, but it is</span>
+<span class="sd">        otherwise computed only once for each set of filters.</span>
+<span class="sd">        </span>
+<span class="sd">        The equation used is</span>
+<span class="sd">        </span>
+<span class="sd">        .. math::</span>
+<span class="sd">            </span>
+<span class="sd">            |G_{wx}|^{2} + |G_{wy}|^2</span>
+<span class="sd">        </span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_denominator</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_denominator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_denominator</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gx</span><span class="p">)</span><span class="o">**</span><span class="mf">2.0</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gy</span><span class="p">)</span><span class="o">**</span><span class="mf">2.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_denominator</span><span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">_denominator</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="c">#Fix non-hermitian parts.</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_denominator</span>
+        
+<div class="viewcode-block" id="FourierTransformReconstructor.apply_filter"><a class="viewcode-back" href="../../api/FTR.ftr.FourierTransformReconstructor.html#FTR.ftr.FourierTransformReconstructor.apply_filter">[docs]</a>    <span class="k">def</span> <span class="nf">apply_filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xs_ft</span><span class="p">,</span> <span class="n">ys_ft</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;Apply the filter to the FFT&#39;d values.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        xs_ft : array_like</span>
+<span class="sd">            The fourier transform of the x slopes</span>
+<span class="sd">        ys_ft : array_like</span>
+<span class="sd">            The fourier transform of the y slopes</span>
+<span class="sd">            </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        est_ft : array_like</span>
+<span class="sd">            The fourier transform of the phase estimate.</span>
+<span class="sd">        </span>
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        </span>
+<span class="sd">        This implements the equation</span>
+<span class="sd">        </span>
+<span class="sd">        .. math::</span>
+<span class="sd">            </span>
+<span class="sd">            \hat{\Phi} = \frac{G_{wx}^{*} X + </span>
+<span class="sd">            G_{wy}^{*} Y}{|G_{wx}|^{2} + |G_{wy}|^2}</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">conj</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gx</span><span class="p">)</span> <span class="o">*</span> <span class="n">xs_ft</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">conj</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gy</span><span class="p">)</span> <span class="o">*</span> <span class="n">ys_ft</span><span class="p">)</span>
+                <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">denominator</span><span class="p">)</span>
+        </div>
+<div class="viewcode-block" id="FourierTransformReconstructor.reconstruct"><a class="viewcode-back" href="../../api/FTR.ftr.FourierTransformReconstructor.html#FTR.ftr.FourierTransformReconstructor.reconstruct">[docs]</a>    <span class="k">def</span> <span class="nf">reconstruct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">manage_tt</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">suppress_tt</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Use the Fourier transform and spatial filters to reconstruct an</span>
+<span class="sd">        estimate of the phase.</span>
+<span class="sd">        </span>
+<span class="sd">        Instead of using this method directly, call the instnace itself</span>
+<span class="sd">        to ensure that settings are correctly obeyed.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        xs : array_like</span>
+<span class="sd">            The x slopes</span>
+<span class="sd">        ys : array_like</span>
+<span class="sd">            The y slopes</span>
+<span class="sd">        manage_tt : bool</span>
+<span class="sd">            Whether to remove the tip/tilt from the slopes before reconstruction</span>
+<span class="sd">        suppress_tt : bool</span>
+<span class="sd">            If set, do not re-apply the tip tilt after reconstruction.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        estimate : array_like</span>
+<span class="sd">            An estimate of the phase across all the points</span>
+<span class="sd">            where x and y slopes were measured.</span>
+<span class="sd">        </span>
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This method serves as the implementation for :meth:`__call__`.</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">manage_tt</span><span class="p">:</span>
+            <span class="n">xs</span><span class="p">,</span> <span class="n">xt</span> <span class="o">=</span> <span class="n">remove_piston</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ap</span><span class="p">,</span> <span class="n">xs</span><span class="p">)</span>
+            <span class="n">ys</span><span class="p">,</span> <span class="n">yt</span> <span class="o">=</span> <span class="n">remove_piston</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ap</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
+        
+        <span class="n">xs_ft</span> <span class="o">=</span> <span class="n">fftpack</span><span class="o">.</span><span class="n">fftn</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span>
+        <span class="n">ys_ft</span> <span class="o">=</span> <span class="n">fftpack</span><span class="o">.</span><span class="n">fftn</span><span class="p">(</span><span class="n">ys</span><span class="p">)</span>
+        
+        <span class="c"># There is a factor of two here. This is applied because the normalization of the FFT in IDL is different from the one used here. See FFTNormalization.rst</span>
+        <span class="n">est_ft</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_filter</span><span class="p">(</span><span class="n">xs_ft</span><span class="p">,</span> <span class="n">ys_ft</span><span class="p">)</span> <span class="o">*</span> <span class="mf">2.0</span>
+        
+        <span class="n">estimate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">fftpack</span><span class="o">.</span><span class="n">ifftn</span><span class="p">(</span><span class="n">est_ft</span><span class="p">))</span>
+        
+        <span class="k">if</span> <span class="n">manage_tt</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">suppress_tt</span><span class="p">:</span>
+            <span class="n">estimate</span> <span class="o">=</span> <span class="n">apply_tiptilt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ap</span><span class="p">,</span> <span class="n">estimate</span><span class="p">,</span> <span class="n">xt</span><span class="p">,</span> <span class="n">yt</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">estimate</span>
+        </div>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Perform the reconstruction.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        xs : array_like</span>
+<span class="sd">            The x slopes</span>
+<span class="sd">        ys : array_like</span>
+<span class="sd">            The y slopes</span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        estimate : array_like</span>
+<span class="sd">            An estimate of the phase across all the points</span>
+<span class="sd">            where x and y slopes were measured.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">reconstruct</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> 
+            <span class="n">manage_tt</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">manage_tt</span><span class="p">,</span> <span class="n">suppress_tt</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">suppress_tt</span><span class="p">)</span>
+        
+    <span class="k">def</span> <span class="nf">invert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">estimate</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Invert the estimate to produce slopes.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        estimate : array_like</span>
+<span class="sd">            Phase estimate to invert.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        xs : array_like</span>
+<span class="sd">            Estimate of the x slopes.</span>
+<span class="sd">        ys : array_like</span>
+<span class="sd">            Estimate of the y slopes.</span>
+<span class="sd">        </span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">manage_tt</span><span class="p">:</span>
+            <span class="n">estimate</span><span class="p">,</span> <span class="n">ttx</span><span class="p">,</span> <span class="n">tty</span> <span class="o">=</span> <span class="n">remove_tiptilt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ap</span><span class="p">,</span> <span class="n">estimate</span><span class="p">)</span>
+        
+        <span class="n">est_ft</span> <span class="o">=</span> <span class="n">fftpack</span><span class="o">.</span><span class="n">fftn</span><span class="p">(</span><span class="n">estimate</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
+        
+        <span class="n">xs_ft</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gx</span> <span class="o">*</span> <span class="n">est_ft</span>
+        <span class="n">ys_ft</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gy</span> <span class="o">*</span> <span class="n">est_ft</span>
+        
+        <span class="n">xs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">fftpack</span><span class="o">.</span><span class="n">ifftn</span><span class="p">(</span><span class="n">xs_ft</span><span class="p">))</span>
+        <span class="n">ys</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">fftpack</span><span class="o">.</span><span class="n">ifftn</span><span class="p">(</span><span class="n">ys_ft</span><span class="p">))</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">manage_tt</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">suppress_tt</span><span class="p">:</span>
+            <span class="n">xs</span> <span class="o">+=</span> <span class="n">ttx</span>
+            <span class="n">ys</span> <span class="o">+=</span> <span class="n">tty</span>
+        
+        <span class="k">return</span> <span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
+        
+    <span class="n">_REGISTRY</span> <span class="o">=</span> <span class="p">{}</span>
+        
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="FourierTransformReconstructor.register"><a class="viewcode-back" href="../../api/FTR.ftr.FourierTransformReconstructor.html#FTR.ftr.FourierTransformReconstructor.register">[docs]</a>    <span class="k">def</span> <span class="nf">register</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Register a filter generating function.</span>
+<span class="sd">        </span>
+<span class="sd">        This classmethod can be used as a decorator.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : str</span>
+<span class="sd">            The name of the filter to register</span>
+<span class="sd">        filter : callable</span>
+<span class="sd">            A callable which will return an :class:`FTRFilter`-compatible</span>
+<span class="sd">            tuple when provided with the desired shape of the filter.</span>
+<span class="sd">            </span>
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        </span>
+<span class="sd">        To use this method as a decorator, simply provide the filter name::</span>
+<span class="sd">            </span>
+<span class="sd">            @FourierTransformReconstructor.register(&quot;myfilter&quot;)</span>
+<span class="sd">            def my_filter_function(shape):</span>
+<span class="sd">                ...</span>
+<span class="sd">                return FTRFilter(gx, gy, &quot;myfilter&quot;)</span>
+<span class="sd">            </span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="k">def</span> <span class="nf">_register</span><span class="p">(</span><span class="n">filterfunc</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Filter Function&quot;&quot;&quot;</span>
+            <span class="n">cls</span><span class="o">.</span><span class="n">_REGISTRY</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">filterfunc</span>
+            <span class="k">return</span> <span class="n">filterfunc</span>
+        
+        <span class="k">if</span> <span class="n">six</span><span class="o">.</span><span class="n">callable</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+            <span class="n">filterfunc</span> <span class="o">=</span> <span class="n">name</span>
+            <span class="n">cls</span><span class="o">.</span><span class="n">_REGISTRY</span><span class="p">[</span><span class="n">filterfunc</span><span class="o">.</span><span class="n">__name__</span><span class="p">]</span> <span class="o">=</span> <span class="n">filterfunc</span>
+            <span class="k">return</span> <span class="n">filterfunc</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">text_type</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">filter</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_register</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">text_type</span><span class="p">)</span> <span class="ow">and</span> <span class="n">six</span><span class="o">.</span><span class="n">callable</span><span class="p">(</span><span class="nb">filter</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">_register</span><span class="p">(</span><span class="n">filterfunc</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Filter must be a callable, or a name, and used as a decorator.&quot;</span><span class="p">)</span>
+    </div>
+<div class="viewcode-block" id="FourierTransformReconstructor.use"><a class="viewcode-back" href="../../api/FTR.ftr.FourierTransformReconstructor.html#FTR.ftr.FourierTransformReconstructor.use">[docs]</a>    <span class="k">def</span> <span class="nf">use</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">filter</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Use a particular spatial filter for reconstruction.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filter : str</span>
+<span class="sd">            The filter name, as it was registered with :meth:`register`</span>
+<span class="sd">        </span>
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        </span>
+<span class="sd">        You can create a reconstructor with one filter::</span>
+<span class="sd">            </span>
+<span class="sd">            &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">            &gt;&gt;&gt; aperture = np.ones((10,10))</span>
+<span class="sd">            &gt;&gt;&gt; recon = FourierTransformReconstructor(aperture, &quot;fried&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; recon</span>
+<span class="sd">            &lt;FourierTransformReconstructor (10x10) filter=&#39;fried&#39;&gt;</span>
+<span class="sd">            &gt;&gt;&gt; recon.use(&quot;mod_hud&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; recon</span>
+<span class="sd">            &lt;FourierTransformReconstructor (10x10) filter=&#39;mod_hud&#39;&gt;</span>
+<span class="sd">            </span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filtername</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">filter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        </div>
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="FourierTransformReconstructor.get"><a class="viewcode-back" href="../../api/FTR.ftr.FourierTransformReconstructor.html#FTR.ftr.FourierTransformReconstructor.get">[docs]</a>    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="nb">filter</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get a filter tuple by name from the filter registry.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filter : str</span>
+<span class="sd">            The filter name, as it was registered with :meth:`register`</span>
+<span class="sd">        shape : tuple of ints</span>
+<span class="sd">            The shape of the desired filter.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        gx : array_like</span>
+<span class="sd">            The x spatial filter</span>
+<span class="sd">        gy : array_like</span>
+<span class="sd">            The y spatial filter</span>
+<span class="sd">        name : str</span>
+<span class="sd">            The filter name</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_REGISTRY</span><span class="p">[</span><span class="nb">filter</span><span class="p">](</span><span class="n">shape</span><span class="p">)</span>
+        </div>
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="FourierTransformReconstructor.filters"><a class="viewcode-back" href="../../api/FTR.ftr.FourierTransformReconstructor.html#FTR.ftr.FourierTransformReconstructor.filters">[docs]</a>    <span class="k">def</span> <span class="nf">filters</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the list of registered filter names.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_REGISTRY</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+</div></div>
+<div class="viewcode-block" id="FastFTReconstructor"><a class="viewcode-back" href="../../api/FTR.ftr.FastFTReconstructor.html#FTR.ftr.FastFTReconstructor">[docs]</a><span class="k">class</span> <span class="nc">FastFTReconstructor</span><span class="p">(</span><span class="n">CFTRBase</span><span class="p">,</span> <span class="n">FourierTransformReconstructor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A fourier transform reconstructor which implements the reconstruct</span>
+<span class="sd">    method using :ref:`libftr`.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ap: array_like</span>
+<span class="sd">        The aperture of valid measurement points, which also defines the</span>
+<span class="sd">        reconstructor shape used to generate filters.</span>
+<span class="sd">    filter: string_like, optional</span>
+<span class="sd">        The filter name to use. If not provided, it is expected that the user</span>
+<span class="sd">        will initialize :attr:`gx` and :attr:`gy` themselves.</span>
+<span class="sd">    manage_tt: bool, optional</span>
+<span class="sd">        Remove tip and tilt from slopes before reconstruction, and re-apply</span>
+<span class="sd">        them after reconstruction. (default is to use ``suppress_tt``)</span>
+<span class="sd">    suppress_tt: bool, optional</span>
+<span class="sd">        Remove tip and tilt from slopes, and don&#39;t re-apply after</span>
+<span class="sd">        reconstruction. (default is False)</span>
+<span class="sd">        </span>
+<span class="sd">    </span>
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The Fourier transforms used in this reconstructor are handled by FFTW &lt;http://fftw.org&gt;, the Fastest Fourier Transform in the West. FFTW gains much of its speed by operating in-place, and performing as many optimization tricks as it knows how. When benchmarked against the pure-python implementaion above, this implementation should be almost an order of magnitude faster.</span>
+<span class="sd">    </span>
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    :class:`FourierTransformReconstructor`</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">_denominator</span> <span class="o">=</span> <span class="bp">None</span>
+    
+<div class="viewcode-block" id="FastFTReconstructor.reconstruct"><a class="viewcode-back" href="../../api/FTR.ftr.FastFTReconstructor.html#FTR.ftr.FastFTReconstructor.reconstruct">[docs]</a>    <span class="k">def</span> <span class="nf">reconstruct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Reconstruct slopes to phase.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        xs : array_like</span>
+<span class="sd">            The x slopes</span>
+<span class="sd">        ys : array_like</span>
+<span class="sd">            The y slopes</span>
+<span class="sd">            </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        estimate : array_like</span>
+<span class="sd">            An estimate of the phase from the slopes.</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">manage_tt</span><span class="p">:</span>
+            <span class="n">xs</span><span class="p">,</span> <span class="n">xt</span> <span class="o">=</span> <span class="n">remove_piston</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ap</span><span class="p">,</span> <span class="n">xs</span><span class="p">)</span>
+            <span class="n">ys</span><span class="p">,</span> <span class="n">yt</span> <span class="o">=</span> <span class="n">remove_piston</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ap</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
+        
+        <span class="n">estimate</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">FastFTReconstructor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">reconstruct</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">manage_tt</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">suppress_tt</span><span class="p">:</span>
+            <span class="n">estimate</span> <span class="o">=</span> <span class="n">apply_tiptilt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ap</span><span class="p">,</span> <span class="n">estimate</span><span class="p">,</span> <span class="n">xt</span><span class="p">,</span> <span class="n">yt</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">estimate</span>
+    
+
+</div></div>
+<span class="nd">@FourierTransformReconstructor.register</span><span class="p">(</span><span class="s">&quot;hud&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="hud_filter"><a class="viewcode-back" href="../../api/FTR.ftr.hud_filter.html#FTR.ftr.hud_filter">[docs]</a><span class="k">def</span> <span class="nf">hud_filter</span><span class="p">(</span><span class="n">shape</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Hudgins shearing interferometer. In this geometry the WFS produces</span>
+<span class="sd">    measurements which are the differences in phase values between two points.</span>
+<span class="sd">    This corresponds to wavefront sensors centered between each pair of</span>
+<span class="sd">    points.&quot;&quot;&quot;</span>
+    <span class="n">fy</span><span class="p">,</span> <span class="n">fx</span> <span class="o">=</span> <span class="n">fftgrid</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">shape</span>
+    
+    <span class="n">gx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1j</span> <span class="o">*</span> <span class="n">fx</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.0</span>
+    <span class="n">gy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1j</span> <span class="o">*</span> <span class="n">fy</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.0</span>
+    
+    <span class="c">#TODO: Check that this nyquist nulling is correct.</span>
+    <span class="c"># gx[:,nx/2] = 0.0</span>
+    <span class="c"># gy[ny/2,:] = 0.0</span>
+    
+    <span class="c">#TODO: Check for other null points in the filter.</span>
+    
+    <span class="k">return</span> <span class="n">FTRFilter</span><span class="p">(</span><span class="n">gx</span><span class="p">,</span> <span class="n">gy</span><span class="p">,</span> <span class="s">&quot;hud&quot;</span><span class="p">)</span>
+</div>
+<span class="nd">@FourierTransformReconstructor.register</span><span class="p">(</span><span class="s">&quot;mod_hud&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="mod_hud_filter"><a class="viewcode-back" href="../../api/FTR.ftr.mod_hud_filter.html#FTR.ftr.mod_hud_filter">[docs]</a><span class="k">def</span> <span class="nf">mod_hud_filter</span><span class="p">(</span><span class="n">shape</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The modified hudgins filter is a geomoetry similar to</span>
+<span class="sd">    a Fried geometry, but where the slope measurements, rather than</span>
+<span class="sd">    being the difference between two adjacent points, the slope is</span>
+<span class="sd">    taken to be the real slope at the point in the center of four</span>
+<span class="sd">    phase measurement points.&quot;&quot;&quot;</span>
+    <span class="n">fy</span><span class="p">,</span> <span class="n">fx</span> <span class="o">=</span> <span class="n">fftgrid</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">shape</span>
+    
+    <span class="n">gx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1j</span><span class="o">*</span><span class="n">fy</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1j</span><span class="o">*</span><span class="n">fx</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">gy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1j</span><span class="o">*</span><span class="n">fx</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1j</span><span class="o">*</span><span class="n">fy</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">gx</span><span class="p">[</span><span class="n">ny</span><span class="o">/</span><span class="mi">2</span><span class="p">,:]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">gy</span><span class="p">[:,</span><span class="n">nx</span><span class="o">/</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    
+    <span class="k">return</span> <span class="n">FTRFilter</span><span class="p">(</span><span class="n">gx</span><span class="p">,</span> <span class="n">gy</span><span class="p">,</span> <span class="s">&quot;mod_hud&quot;</span><span class="p">)</span>
+</div>
+<span class="nd">@FourierTransformReconstructor.register</span><span class="p">(</span><span class="s">&quot;fried&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="fried_filter"><a class="viewcode-back" href="../../api/FTR.ftr.fried_filter.html#FTR.ftr.fried_filter">[docs]</a><span class="k">def</span> <span class="nf">fried_filter</span><span class="p">(</span><span class="n">shape</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The fried filter is for a system geometry where the</span>
+<span class="sd">    slope measruement points are taken to be the difference</span>
+<span class="sd">    between two adjacent points. As such, the slopes are</span>
+<span class="sd">    reconstructed to be the phase points 1/2 a subaperture</span>
+<span class="sd">    away from the measured point.</span>
+
+<span class="sd">    In this scheme, the slope measruement in the center of </span>
+<span class="sd">    four phase measurement points is taken (in the x-direction)</span>
+<span class="sd">    to be the average of the x slope between the top measruements</span>
+<span class="sd">    and the x slope between the bottom measurement.&quot;&quot;&quot;</span>
+    <span class="n">fy</span><span class="p">,</span> <span class="n">fx</span> <span class="o">=</span> <span class="n">fftgrid</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">shape</span>
+    
+    <span class="n">gx</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1j</span><span class="o">*</span><span class="n">fy</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1j</span><span class="o">*</span><span class="n">fx</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">gy</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1j</span><span class="o">*</span><span class="n">fx</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1j</span><span class="o">*</span><span class="n">fy</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="n">gx</span><span class="p">[</span><span class="n">ny</span><span class="o">//</span><span class="mi">2</span><span class="p">,:]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">gy</span><span class="p">[:,</span><span class="n">nx</span><span class="o">//</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    
+    <span class="k">return</span> <span class="n">FTRFilter</span><span class="p">(</span><span class="n">gx</span><span class="p">,</span> <span class="n">gy</span><span class="p">,</span> <span class="s">&quot;fried&quot;</span><span class="p">)</span>
+
+<span class="c"># @FourierTransformReconstructor.register(&quot;ideal&quot;)</span></div>
+<div class="viewcode-block" id="ideal_filter"><a class="viewcode-back" href="../../api/FTR.ftr.ideal_filter.html#FTR.ftr.ideal_filter">[docs]</a><span class="k">def</span> <span class="nf">ideal_filter</span><span class="p">(</span><span class="n">shape</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;An Ideal filter represents a phase where the slope</span>
+<span class="sd">    measurements are taken to be a continuous sampling of</span>
+<span class="sd">    the phase between phase measurement points. &quot;&quot;&quot;</span>
+    <span class="n">fy</span><span class="p">,</span> <span class="n">fx</span> <span class="o">=</span> <span class="n">fftgrid</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">shape</span>
+    
+    <span class="k">with</span> <span class="n">ignoredivide</span><span class="p">():</span>
+        <span class="n">gx</span> <span class="o">=</span> <span class="p">(</span>
+                  <span class="mi">1</span><span class="o">/</span><span class="n">fy</span>  <span class="o">*</span> <span class="p">(</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">fy</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">fx</span><span class="p">)</span> 
+                          <span class="o">+</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">fx</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">fy</span><span class="p">)</span> <span class="p">)</span> <span class="o">+</span>
+                  <span class="mi">1j</span><span class="o">/</span><span class="n">fy</span> <span class="o">*</span> <span class="p">(</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">fx</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">fy</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> 
+                          <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">fx</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">fy</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+        <span class="n">gy</span> <span class="o">=</span> <span class="p">(</span>
+                  <span class="mi">1</span><span class="o">/</span><span class="n">fx</span>  <span class="o">*</span> <span class="p">(</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">fx</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">fy</span><span class="p">)</span> 
+                          <span class="o">+</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">fy</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">fx</span><span class="p">)</span> <span class="p">)</span> <span class="o">+</span>
+                  <span class="mi">1j</span><span class="o">/</span><span class="n">fx</span> <span class="o">*</span> <span class="p">(</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">fy</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">fx</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> 
+                          <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">fy</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">fx</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+      
+    <span class="c"># Exclude division by zero!</span>
+    <span class="n">gx</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">gy</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="c"># the filter is anti-Hermitian here. The real_part takes care</span>
+    <span class="c"># of it, but simpler to just zero it out.</span>
+    <span class="n">gx</span><span class="p">[</span><span class="n">ny</span><span class="o">//</span><span class="mi">2</span><span class="p">,:]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">gy</span><span class="p">[:,</span><span class="n">nx</span><span class="o">//</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    
+    <span class="k">return</span> <span class="n">FTRFilter</span><span class="p">(</span><span class="n">gx</span><span class="p">,</span> <span class="n">gy</span><span class="p">,</span> <span class="s">&quot;ideal&quot;</span><span class="p">)</span>
+    </div>
+<span class="nd">@FourierTransformReconstructor.register</span><span class="p">(</span><span class="s">&quot;inplace&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="inplace_filter"><a class="viewcode-back" href="../../api/FTR.ftr.inplace_filter.html#FTR.ftr.inplace_filter">[docs]</a><span class="k">def</span> <span class="nf">inplace_filter</span><span class="p">(</span><span class="n">shape</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This filter modifies the &#39;fried&#39; filter so that it reconstructs to the in-place positions of the slopes.&quot;&quot;&quot;</span>
+    <span class="n">fy</span><span class="p">,</span> <span class="n">fx</span> <span class="o">=</span> <span class="n">fftgrid</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">xshift</span><span class="p">,</span> <span class="n">yshift</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">)</span>
+    
+    <span class="n">gx</span><span class="p">,</span> <span class="n">gy</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="n">fried_filter</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    
+    <span class="n">gx</span> <span class="o">*=</span> <span class="n">complexmp</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">fx</span> <span class="o">*</span> <span class="n">xshift</span><span class="p">)</span> <span class="o">*</span> <span class="n">complexmp</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">fy</span> <span class="o">*</span> <span class="n">yshift</span><span class="p">)</span>
+    <span class="n">gy</span> <span class="o">*=</span> <span class="n">complexmp</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">fx</span> <span class="o">*</span> <span class="n">xshift</span><span class="p">)</span> <span class="o">*</span> <span class="n">complexmp</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">fy</span> <span class="o">*</span> <span class="n">yshift</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">FTRFilter</span><span class="p">(</span><span class="n">gx</span><span class="p">,</span> <span class="n">gy</span><span class="p">,</span> <span class="s">&quot;inplace&quot;</span><span class="p">)</span>
+    </div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2015, Alex Rudy.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.1. &nbsp;
+    Last built 16 Oct 2015. <br/>
+  </p>
+</footer>
+  </body>
+</html>

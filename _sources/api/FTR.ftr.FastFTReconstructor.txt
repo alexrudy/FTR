@@ -1,0 +1,42 @@
+
+
+FastFTReconstructor
+===========================
+
+.. currentmodule:: FTR.ftr
+
+.. autoclass:: FastFTReconstructor
+   :show-inheritance:
+
+   
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+   
+      ~FastFTReconstructor.reconstruct
+
+   
+   
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods Documentation
+
+   
+   .. automethod:: reconstruct
+
+   
+   

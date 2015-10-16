@@ -1,0 +1,27 @@
+
+
+FTRFilter
+=================
+
+.. currentmodule:: FTR.ftr
+
+.. autoclass:: FTRFilter
+   :show-inheritance:
+
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   

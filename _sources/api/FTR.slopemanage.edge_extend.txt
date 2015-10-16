@@ -1,0 +1,8 @@
+
+
+edge_extend
+===========================
+
+.. currentmodule:: FTR.slopemanage
+
+.. autofunction:: edge_extend

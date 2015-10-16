@@ -1,0 +1,8 @@
+
+
+hud_filter
+==================
+
+.. currentmodule:: FTR.ftr
+
+.. autofunction:: hud_filter

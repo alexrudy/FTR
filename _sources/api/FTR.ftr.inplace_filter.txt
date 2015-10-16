@@ -1,0 +1,8 @@
+
+
+inplace_filter
+======================
+
+.. currentmodule:: FTR.ftr
+
+.. autofunction:: inplace_filter

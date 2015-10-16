@@ -1,0 +1,8 @@
+
+
+fried_filter
+====================
+
+.. currentmodule:: FTR.ftr
+
+.. autofunction:: fried_filter
