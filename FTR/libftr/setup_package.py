@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-
+from __future__ import absolute_import
 import os
+from distutils.core import Extension
+
 
 def get_extensions():
     """Return appropriate cython extensions"""
-    from distutils.core import Extension
     
     # Get include directory relative to setup.py
     ftr_include = os.path.abspath(os.path.join('cextern','FTR','src'))
