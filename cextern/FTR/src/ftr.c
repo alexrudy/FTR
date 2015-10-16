@@ -21,14 +21,7 @@ struct ftr_plan_s {
   fftw_plan p_est; // Inverse phase transform.
 };
 
-/* 
-This is a private method, decalared here for use inside
-ftr_plan_reconstructor.
-*/
-void ftr_allocate_fftw_plans(ftr_plan recon);
 
-//TODO: This is probably the broken piece when nx or ny are odd.
-//I'm not sure why it is dependent on even or odd behavior, but hey?
 void ftr_map_half_complex(int ny, int nx, int * map, int * imap)
 {
   int x, y;
@@ -100,15 +93,11 @@ ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *
   ftr_map_half_complex(ny, nx, recon->ift, recon->ifs);
   
   /* Allocate FFTW plans. */
-  ftr_allocate_fftw_plans(recon);
-  return recon;
-}
-
-void 
-ftr_allocate_fftw_plans(ftr_plan recon) {
   recon->p_sx  = fftw_plan_dft_r2c_2d(recon->ny, recon->nx, recon->sx, recon->sx_ft, FTR_PRECOMUTE);
   recon->p_sy  = fftw_plan_dft_r2c_2d(recon->ny, recon->nx, recon->sy, recon->sy_ft, FTR_PRECOMUTE);
   recon->p_est = fftw_plan_dft_c2r_2d(recon->ny, recon->nx, recon->est_ft, recon->est, FTR_PRECOMUTE);
+  
+  return recon;
 }
 
 void
@@ -147,6 +136,7 @@ ftr_reconstruct_with_callback(ftr_plan recon, ftr_estimate_callback callback, vo
   
     // Estimation using the gx/gy filters.
     ftr_estimate(recon);
+    
     // Filtering callback for the estimate.
     if(callback) callback(data, recon->est_ft);
     
