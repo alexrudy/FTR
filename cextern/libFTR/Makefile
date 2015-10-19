@@ -6,15 +6,17 @@
 #  Copyright 2015 Alexander Rudy. All rights reserved.
 #
 
-LDFLAGS = -g -O2 -lfftw3 -lm -L /opt/local/lib
+LDFLAGS = -g -O2 -lfftw3_threads -lfftw3 -lm -lpthread -L /opt/local/lib
 BUILDDIR = build/
 SRCDIR = src/
 LIBDIR = lib/
 EXAMPLE = example/
 INCLUDEDIR = include/
-INCLUDE = $(INCLUDEDIR)ftr.h $(INCLUDEDIR)slopemanage.h
+INCLUDE = $(INCLUDEDIR)ftr.h $(INCLUDEDIR)slopemanage.h $(INCLUDEDIR)dbg.h
 TARGET = $(LIBDIR)libftr.so ftr-example recon-timing $(INCLUDE)
 OBJECTS = $(BUILDDIR)ftr.o $(BUILDDIR)slopemanage.o
+
+all: $(TARGET)
 
 $(BUILDDIR)%.o : $(SRCDIR)%.c $(INCLUDE)
 	@mkdir -p $(BUILDDIR)
@@ -37,8 +39,6 @@ recon-timing : $(EXAMPLE)recon_timing.o $(LIBDIR)libftr.so
 $(INCLUDEDIR)%.h : $(SRCDIR)%.h
 	@mkdir -p $(INCLUDEDIR)
 	cp $< $(INCLUDEDIR)
-
-all: $(TARGET)
 
 clean:
 	rm -f $(TARGET)
