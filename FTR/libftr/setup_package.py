@@ -20,7 +20,7 @@ def get_extensions():
     sources.extend([ os.path.join(ftr_include, filename) for filename in os.listdir(ftr_include) if filename.endswith(".c") ])
     
     # Set up libraries
-    libraries = ['fftw3']
+    libraries = ['fftw3', 'fftw3_threads', 'pthread']
     
     _ftr = Extension(
         local_name, sources, include_dirs=['numpy', ftr_include], libraries=libraries
