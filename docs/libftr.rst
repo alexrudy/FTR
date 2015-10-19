@@ -2,9 +2,9 @@
 
 .. _libftr:
 
-*********************************
-C implementation of FTR in libFTR
-*********************************
+*******************************
+libFTR: C implementation of FTR
+*******************************
 
 This is a library implementation of FTR using pure C, suitable for inclusion in additional code.
 
@@ -42,8 +42,8 @@ At the end of this code snippet, the reconstructed phase is always stored in the
 
 To change the filter used by a particular :c:type:`ftr_plan`, it is safe to call :c:func:`ftr_set_filter`.
 
-Refrence / API
-==============
+Fourier Transform Reconstructor API
+===================================
 
 .. c:type:: ftr_plan
 
@@ -79,11 +79,11 @@ Refrence / API
     :param ftr_plan recon: The :c:type:`ftr_plan` struct for this reconstructor.
 
 .. c:type:: ftr_estimate_callback
-    
+
     This is the callback type for functions which can serve as callbacks in :c:func:`ftr_reconstruct_with_callback`. The callback signature must match ``void (*ftr_estimate_callback)(void * data, fftw_complex * est_ft)``. The inclusion of the ``void * data`` pointer allows for an arbitrary structure of user data to be passed in to the Fourier Transform Reconstructor.
 
 .. c:function:: void ftr_reconstruct_with_callback(ftr_plan recon, ftr_estimate_callback callback, void * data)
-    
+
     :param ftr_plan recon: The :c:type:`ftr_plan` struct for this reconstructor.
     :param ftr_estimate_callback callback: A callback function to be applied to the fourier transform of the phase estimate.
     :param void* data: A pointer to data required by `callback`.
@@ -137,8 +137,8 @@ A minimial example of slope management::
     slope_management_destroy(plan);
 
 
-Reference / API
-===============
+Slope Management API
+====================
 
 .. c:type:: sm_plan
 
