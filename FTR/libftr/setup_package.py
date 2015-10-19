@@ -7,9 +7,11 @@ from distutils.core import Extension
 def get_extensions():
     """Return appropriate cython extensions"""
     
+    ftr_library_name = "libFTR"
+    
     # Get include directory relative to setup.py
-    ftr_include = os.path.abspath(os.path.join('cextern','FTR','src'))
-    ftr_library = os.path.abspath(os.path.join('cextern','FTR'))
+    ftr_include = os.path.abspath(os.path.join('cextern',ftr_library_name,'src'))
+    ftr_library = os.path.abspath(os.path.join('cextern',ftr_library_name))
     local_dir = os.path.dirname(__file__)
     local_name = ".".join(["FTR", os.path.basename(os.path.dirname(__file__)), "_ftr"])
     
