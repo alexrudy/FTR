@@ -8,7 +8,11 @@
 
 #include "ftr.h"
 #include <stdlib.h>
+#include "dbg.h"
+
+#ifndef FTR_PRECOMUTE
 #define FTR_PRECOMUTE FFTW_MEASURE
+#endif
 
 struct ftr_plan_s {
   int nx, ny, nn, nft, nf;
@@ -21,6 +25,17 @@ struct ftr_plan_s {
   fftw_plan p_est; // Inverse phase transform.
 };
 
+int ftr_init(int nthreads)
+{
+  int rc;
+  rc = fftw_init_threads();
+  check(rc != 0, "FFTW Threads did not initialize properly.");
+  fftw_plan_with_nthreads(nthreads);
+  
+  return 0;
+error:
+  return 1;
+}
 
 void ftr_map_half_complex(int ny, int nx, int * map, int * imap)
 {
@@ -62,6 +77,8 @@ ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *
   int x, y, io, nfo;
   ftr_plan recon;
   recon = malloc(sizeof(struct ftr_plan_s));
+  check_mem(recon);
+  
   /* Dimensions of the arrays. */
   recon->nx = nx;
   recon->ny = ny;
@@ -73,7 +90,9 @@ ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *
   
   /* Index array */
   recon->ift = malloc(sizeof(int) * recon->nn);
+  check_mem(recon->ift);
   recon->ifs = malloc(sizeof(int) * recon->nft);
+  check_mem(recon->ifs);
   
   /* Input and output arrays. */
   recon->sx = sx;
@@ -82,34 +101,51 @@ ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *
   
   /* Complex data arrays which are allocated but not initialized. */
   recon->est_ft = fftw_malloc(sizeof(fftw_complex) * recon->nn);
+  check_mem(recon->est_ft);
+  
   recon->sx_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
+  check_mem(recon->sx_ft);
+  
   recon->sy_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
-
+  check_mem(recon->sy_ft);
+  
   recon->gx_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
+  check_mem(recon->gx_ft);
+  
   recon->gy_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
+  check_mem(recon->gy_ft);
+  
   recon->gd_ft  = fftw_malloc(sizeof(fftw_complex) * recon->nn);
+  check_mem(recon->gd_ft);
   
   /* Prepare the mapping for the half-complex problem. */
   ftr_map_half_complex(ny, nx, recon->ift, recon->ifs);
   
   /* Allocate FFTW plans. */
   recon->p_sx  = fftw_plan_dft_r2c_2d(recon->ny, recon->nx, recon->sx, recon->sx_ft, FTR_PRECOMUTE);
+  check(recon->p_sx, "Failed to plan sx FFT r2c 2d");
   recon->p_sy  = fftw_plan_dft_r2c_2d(recon->ny, recon->nx, recon->sy, recon->sy_ft, FTR_PRECOMUTE);
+  check(recon->p_sx, "Failed to plan sy FFT r2c 2d");
   recon->p_est = fftw_plan_dft_c2r_2d(recon->ny, recon->nx, recon->est_ft, recon->est, FTR_PRECOMUTE);
+  check(recon->p_est, "Failed to plan est FFT c2r 2d");
   
   return recon;
+
+error:
+  ftr_destroy(recon);
+  return NULL;
 }
 
 void
-ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy) {
+ftr_set_filter(ftr_plan recon, const fftw_complex *gx, const fftw_complex *gy) {
   
   size_t i;
   int x, y;
   double denom;
+  memcpy(recon->gx_ft, gx, sizeof(fftw_complex) * recon->nn);
+  memcpy(recon->gy_ft, gy, sizeof(fftw_complex) * recon->nn);
   for(i = 0; i < recon->nn; ++i)
   {
-    recon->gx_ft[i] = gx[i];
-    recon->gy_ft[i] = gy[i];
     denom = (pow(cabs(recon->gx_ft[i]), 2) + pow(cabs(recon->gy_ft[i]), 2)) * (fftw_complex)(recon->nn / 2.0);
     // Note the normalization factor on the end here. The factor of two accounts for the two FFTs involved
     // in the forward transform, with only one FFT involved in the backward transform.
@@ -148,36 +184,33 @@ ftr_reconstruct_with_callback(ftr_plan recon, ftr_estimate_callback callback, vo
 void ftr_estimate(ftr_plan recon) {
   size_t i, j;
   int x, y;
-  fftw_complex numerx, numery, numer, est;
   for(i = 0; i < recon->nft; ++i)
   {
       recon->est_ft[i] = (conj(recon->gx_ft[recon->ifs[i]]) * recon->sx_ft[i]
         + conj(recon->gy_ft[recon->ifs[i]]) * recon->sy_ft[i])
         * recon->gd_ft[recon->ifs[i]];
   }
-  
-  
   return;
 }
 
 void
 ftr_destroy(ftr_plan recon)
 {
-    fftw_destroy_plan(recon->p_sx);
-    fftw_destroy_plan(recon->p_sy);
-    fftw_destroy_plan(recon->p_est);
+    if(recon->p_sx) fftw_destroy_plan(recon->p_sx);
+    if(recon->p_sy) fftw_destroy_plan(recon->p_sy);
+    if(recon->p_est) fftw_destroy_plan(recon->p_est);
     
-    fftw_free(recon->est_ft);
-    fftw_free(recon->sx_ft);
-    fftw_free(recon->sy_ft);
-    fftw_free(recon->gx_ft);
-    fftw_free(recon->gy_ft);
-    fftw_free(recon->gd_ft);
+    if(recon->est_ft) fftw_free(recon->est_ft);
+    if(recon->sx_ft) fftw_free(recon->sx_ft);
+    if(recon->sy_ft) fftw_free(recon->sy_ft);
+    if(recon->gx_ft) fftw_free(recon->gx_ft);
+    if(recon->gy_ft) fftw_free(recon->gy_ft);
+    if(recon->gd_ft) fftw_free(recon->gd_ft);
     
-    free(recon->ift);
-    free(recon->ifs);
+    if(recon->ift) free(recon->ift);
+    if(recon->ifs) free(recon->ifs);
         
-    free(recon);
+    if(recon) free(recon);
     return;
 }
 

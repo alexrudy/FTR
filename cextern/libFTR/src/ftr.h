@@ -24,6 +24,9 @@ typedef void (*ftr_estimate_callback)(void * data, fftw_complex * est_ft);
 
 
 // Functions
+// Initialize multithreaded things.
+int ftr_init(int nthreads);
+
 
 // Create an FTR plan.
 ftr_plan
@@ -31,7 +34,7 @@ ftr_plan_reconstructor(int nx, int ny, double *sx, double *sy, double *est);
 
 // Set the filter associated with an FTR plan.
 void
-ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy);
+ftr_set_filter(ftr_plan recon, const fftw_complex *gx, const fftw_complex *gy);
 
 // Execute the plan, acting on the arrays specified when this plan
 // was constructed.

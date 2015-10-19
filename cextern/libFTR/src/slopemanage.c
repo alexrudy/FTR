@@ -8,24 +8,29 @@
 
 #include "slopemanage.h"
 #include <stdio.h>
+#include "dbg.h"
 
 struct slope_management_plan_s {
     int nx, ny, nn;
     int *row_any, *left, *right;
     int *col_any, *top, *bottom;
     double *y_row_sum, *x_col_sum;
-    int *ap;
+    const int *ap;
 };
 
 //TODO: This function should provide error checking for invalid apertures.
-sm_plan slope_management_plan(int ny, int nx, int *ap)
+sm_plan slope_management_plan(const int ny, const int nx, const int *ap)
 {
     int r, c;
-    int *row, *column;
+    const int *row, *column;
     int cell;
     
     sm_plan plan;
     plan = malloc(sizeof(struct slope_management_plan_s));
+    check_mem(plan);
+    
+    check(ny > 0, "ny must be positive-definite.")
+    check(nx > 0, "nx must be positive-definite.")
     
     plan->ap = ap;
     plan->nx = nx;
@@ -33,17 +38,18 @@ sm_plan slope_management_plan(int ny, int nx, int *ap)
     plan->nn = plan->nx > plan->ny ? plan->nx : plan->ny;
     
     /* Figure out what is going on with the rows */
-    plan->row_any = malloc(sizeof(int) * ny);
+    plan->row_any = calloc(ny, sizeof(int));
+    check_mem(plan->row_any);
     plan->left = malloc(sizeof(int) * ny);
+    check_mem(plan->left);
+    memset(plan->left, -1, sizeof(int) * ny);
     plan->right = malloc(sizeof(int) * ny);
+    check_mem(plan->right);
+    memset(plan->right, -1, sizeof(int) * ny);
     
     for(r = 0; r < ny; ++r)
     {
         row = (ap + (r * nx));
-        // Initialize these values so that we can see if we've already set them elsewhere.
-        plan->left[r] = -1;
-        plan->right[r] = -1;
-        plan->row_any[r] = 0;
         for(c = 0; c < nx; ++c)
         {
             cell = *(row + c);
@@ -60,20 +66,24 @@ sm_plan slope_management_plan(int ny, int nx, int *ap)
         {
             plan->row_any[r] = 1;
         }
+        if(plan->left[r] == 0 || plan->right[r] == nx - 1)
+        {
+          sentinel("No room to edge correct in x.");
+        }
     }
     
-    plan->col_any = malloc(sizeof(int) * nx);
+    plan->col_any = calloc(nx, sizeof(int));
+    check_mem(plan->col_any);
     plan->top = malloc(sizeof(int) * nx);
+    check_mem(plan->top);
+    memset(plan->top, -1, sizeof(int) * nx);
     plan->bottom = malloc(sizeof(int) * nx);
+    check_mem(plan->bottom);
+    memset(plan->bottom, -1, sizeof(int) * nx);
     
     for(c = 0; c < nx; ++c)
     {
         column = (ap + c);
-        // Initialize these values so that we can see if we've already set them elsewhere.
-        plan->top[c] = -1;
-        plan->bottom[c] = -1;
-        plan->col_any[c] = 0;
-        
         for(r = 1; r < ny; ++r)
         {
             cell = *(column + (r * nx));
@@ -90,9 +100,17 @@ sm_plan slope_management_plan(int ny, int nx, int *ap)
         {
             plan->col_any[c] = 1;
         }
+        if(plan->top[c] == 0 || plan->bottom[c] == nx - 1)
+        {
+          sentinel("No room to edge correct in y.");
+        }
     }
     
     return plan;
+
+error:
+    slope_management_destroy(plan);
+    return NULL;
 }
 
 void slope_management_execute(sm_plan plan, double * sy, double * sx)
@@ -113,6 +131,7 @@ void slope_management_execute(sm_plan plan, double * sy, double * sx)
                 n = (i * plan->nx) + j;
                 if(plan->ap[n] == 1)
                 {
+                  // Only sum if the aperture is illuminated.
                   row_sum += sy[n];
                 }
             }
@@ -128,9 +147,9 @@ void slope_management_execute(sm_plan plan, double * sy, double * sx)
             for(j = 0; j < plan->ny; ++j)
             {
                 n = (j * plan->nx) + i;
-                
                 if(plan->ap[n] == 1)
                 {
+                  // Only sum if the aperture is illuminated.
                   col_sum += sx[n];
                 }
             }
@@ -147,7 +166,7 @@ void slope_management_execute(sm_plan plan, double * sy, double * sx)
 
 // This method just combines the two methods above if you don't care
 // about doing the memory allocation every time.
-void slope_management(int ny, int nx, int *ap, double * sy, double * sx)
+void slope_management(const int ny, const int nx, const int *ap, double * sy, double * sx)
 {
     sm_plan plan;
     plan = slope_management_plan(ny, nx, ap);
@@ -158,17 +177,17 @@ void slope_management(int ny, int nx, int *ap, double * sy, double * sx)
 void slope_management_destroy(sm_plan plan)
 {
     // Free row variables.
-    free(plan->row_any);
-    free(plan->left);
-    free(plan->right);
+    if(plan->row_any) free(plan->row_any);
+    if(plan->left) free(plan->left);
+    if(plan->right) free(plan->right);
     
     // Free column variables.
-    free(plan->col_any);
-    free(plan->top);
-    free(plan->bottom);
+    if(plan->col_any) free(plan->col_any);
+    if(plan->top) free(plan->top);
+    if(plan->bottom) free(plan->bottom);
     
     // Free the plan itself.
-    free(plan);
+    if(plan) free(plan);
     
     return;
 }

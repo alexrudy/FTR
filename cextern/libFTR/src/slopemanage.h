@@ -19,14 +19,14 @@ typedef struct slope_management_plan_s * sm_plan;
 // Functions
 
 // Create a slope managmenet plan for a given aperture.
-sm_plan slope_management_plan(int ny, int nx, int *ap);
+sm_plan slope_management_plan(const int ny, const int nx, const int *ap);
 
 // Execute a slope management plan on slope arrays.
 void slope_management_execute(sm_plan plan, double * sy, double * sx);
 
 // Create and exectue a plan in a single function, for when memory allocation
 // isn't a limiting step.
-void slope_management(int ny, int nx, int *ap, double * sy, double * sx);
+void slope_management(const int ny, const int nx, const int *ap, double * sy, double * sx);
 
 // Destroy the memory allocated by a slope management plan.
 void slope_management_destroy(sm_plan);
