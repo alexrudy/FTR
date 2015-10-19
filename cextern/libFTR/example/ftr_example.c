@@ -9,17 +9,9 @@
 #include "ftr.h"
 #include "slopemanage.h"
 #include "ftr_example.h"
+#include "dbg.h"
 
-void zero(double * pt, int nn)
-{
-    int i;
-    for(i = 0; i < nn; ++i)
-    {   
-        pt[i] = 0.0;
-    }
-}
-
-void make_aperture(int * ap, int nx, int ny)
+void make_aperture(int * ap, const int nx, const int ny)
 {
     int i, j;
     for(i = 0; i < nx; ++i)
@@ -61,32 +53,23 @@ int main (int argc, char const *argv[])
     printf("Conducting %d iterations.\n", iters);
     printf("Allocating arrays. ");
     
-    sx = malloc(sizeof(double) * nn);
-    sy = malloc(sizeof(double) * nn);
-    est = malloc(sizeof(double) * nn);
-    ap = malloc(sizeof(int) * nn);
+    sx = calloc(nn, sizeof(double));
+    sy = calloc(nn, sizeof(double));
+    est = calloc(nn, sizeof(double));
+    ap = calloc(nn, sizeof(int));
+    make_aperture(ap, nx, ny);
     
     gx = fftw_malloc(sizeof(fftw_complex) * nn);
+    memset(gx, 0.0, sizeof(fftw_complex) * nn);
     gy = fftw_malloc(sizeof(fftw_complex) * nn);
+    memset(gy, 0.0, sizeof(fftw_complex) * nn);
     
-    for(i = 0; i < nn; ++i)
-    {
-        gx[i] = 1.0;
-        gy[i] = 1.0;
-    }
-    
-    zero(sx, nn);
-    zero(sy, nn);
-    zero(est, nn);
-    make_aperture(ap, nx, ny);
     
     // This only needs to be done once to allocate memory, etc.
     printf("Planning reconstruction.\n");
     plan = ftr_plan_reconstructor(nx, ny, sx, sy, est);
     ftr_set_filter(plan, gx, gy);
     manage_plan = slope_management_plan(ny, nx, ap);
-    zero(sx, nn);
-    zero(sy, nn);
     
     for(i = 0; i < iters; ++i)
     {
@@ -125,4 +108,6 @@ int main (int argc, char const *argv[])
     
     printf("Done!\n");
     return 0;
+error:
+    return 1;
 }
