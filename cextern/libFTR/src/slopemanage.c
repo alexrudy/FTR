@@ -26,7 +26,7 @@ sm_plan slope_management_plan(const int ny, const int nx, const int *ap)
     int cell;
     
     sm_plan plan;
-    plan = malloc(sizeof(struct slope_management_plan_s));
+    plan = calloc(1, sizeof(struct slope_management_plan_s));
     check_mem(plan);
     
     check(ny > 0, "ny must be positive-definite.")
