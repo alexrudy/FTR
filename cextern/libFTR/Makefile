@@ -6,13 +6,14 @@
 #  Copyright 2015 Alexander Rudy. All rights reserved.
 #
 
-LDFLAGS = -g -O2 -lfftw3_threads -lfftw3 -lm -lpthread -L /opt/local/lib
+LDFLAGS = -g -O2 -Wall -lfftw3_threads -lfftw3 -lm -lpthread -L /opt/local/lib
 BUILDDIR = build/
 SRCDIR = src/
 LIBDIR = lib/
 EXAMPLE = example/
 INCLUDEDIR = include/
-INCLUDE = $(INCLUDEDIR)ftr.h $(INCLUDEDIR)slopemanage.h $(INCLUDEDIR)dbg.h
+HEADERS = $(wildcard $(SRCDIR)*.h)
+INCLUDE = $(patsubst $(SRCDIR)%.h,$(INCLUDEDIR)%.h, $(HEADERS))
 TARGET = $(LIBDIR)libftr.so ftr-example recon-timing $(INCLUDE)
 OBJECTS = $(BUILDDIR)ftr.o $(BUILDDIR)slopemanage.o
 
@@ -20,9 +21,9 @@ all: $(TARGET)
 
 $(BUILDDIR)%.o : $(SRCDIR)%.c $(INCLUDE)
 	@mkdir -p $(BUILDDIR)
-	$(CC) $(CFLAGS) -I$(INCLUDEDIR) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
-$(EXAMPLE)%.o : $(EXAMPLE)%.c
+$(EXAMPLE)%.o : $(EXAMPLE)%.c $(INCLUDE)
 	$(CC) $(CFLAGS) -I$(INCLUDEDIR) -c $< -o $@
 
 $(LIBDIR)lib%.so : $(OBJECTS)
@@ -39,9 +40,14 @@ recon-timing : $(EXAMPLE)recon_timing.o $(LIBDIR)libftr.so
 $(INCLUDEDIR)%.h : $(SRCDIR)%.h
 	@mkdir -p $(INCLUDEDIR)
 	cp $< $(INCLUDEDIR)
-
+	
 clean:
 	rm -f $(TARGET)
 	rm -rf $(LIBDIR)
 	rm -rf $(BUILDDIR)
 	rm -rf $(INCLUDEDIR)
+
+show:
+	@echo $(SRCDIR) $(INCLUDEDIR)
+	@echo $(HEADERS)
+	@echo $(INCLUDE)
