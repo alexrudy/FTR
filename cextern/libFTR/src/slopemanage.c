@@ -26,7 +26,7 @@ sm_plan slope_management_plan(const int ny, const int nx, const int *ap)
     int cell;
     
     sm_plan plan;
-    plan = calloc(1, sizeof(struct slope_management_plan_s));
+    plan = malloc(sizeof(struct slope_management_plan_s));
     check_mem(plan);
     
     check(ny > 0, "ny must be positive-definite.")
@@ -176,18 +176,21 @@ void slope_management(const int ny, const int nx, const int *ap, double * sy, do
 
 void slope_management_destroy(sm_plan plan)
 {
-    // Free row variables.
-    if(plan->row_any) free(plan->row_any);
-    if(plan->left) free(plan->left);
-    if(plan->right) free(plan->right);
-    
-    // Free column variables.
-    if(plan->col_any) free(plan->col_any);
-    if(plan->top) free(plan->top);
-    if(plan->bottom) free(plan->bottom);
-    
-    // Free the plan itself.
-    if(plan) free(plan);
+    if(plan)
+    {
+        // Free row variables.
+        if(plan->row_any) free(plan->row_any);
+        if(plan->left) free(plan->left);
+        if(plan->right) free(plan->right);
+        
+        // Free column variables.
+        if(plan->col_any) free(plan->col_any);
+        if(plan->top) free(plan->top);
+        if(plan->bottom) free(plan->bottom);
+        
+        // Free the plan itself.
+        free(plan);
+    }
     
     return;
 }

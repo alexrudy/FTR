@@ -196,21 +196,23 @@ void ftr_estimate(ftr_plan recon) {
 void
 ftr_destroy(ftr_plan recon)
 {
-    if(recon->p_sx) fftw_destroy_plan(recon->p_sx);
-    if(recon->p_sy) fftw_destroy_plan(recon->p_sy);
-    if(recon->p_est) fftw_destroy_plan(recon->p_est);
+    if(recon){
+        if(recon->p_sx) fftw_destroy_plan(recon->p_sx);
+        if(recon->p_sy) fftw_destroy_plan(recon->p_sy);
+        if(recon->p_est) fftw_destroy_plan(recon->p_est);
     
-    if(recon->est_ft) fftw_free(recon->est_ft);
-    if(recon->sx_ft) fftw_free(recon->sx_ft);
-    if(recon->sy_ft) fftw_free(recon->sy_ft);
-    if(recon->gx_ft) fftw_free(recon->gx_ft);
-    if(recon->gy_ft) fftw_free(recon->gy_ft);
-    if(recon->gd_ft) fftw_free(recon->gd_ft);
+        if(recon->est_ft) fftw_free(recon->est_ft);
+        if(recon->sx_ft) fftw_free(recon->sx_ft);
+        if(recon->sy_ft) fftw_free(recon->sy_ft);
+        if(recon->gx_ft) fftw_free(recon->gx_ft);
+        if(recon->gy_ft) fftw_free(recon->gy_ft);
+        if(recon->gd_ft) fftw_free(recon->gd_ft);
     
-    if(recon->ift) free(recon->ift);
-    if(recon->ifs) free(recon->ifs);
+        if(recon->ift) free(recon->ift);
+        if(recon->ifs) free(recon->ifs);
         
-    if(recon) free(recon);
+        free(recon);
+    }
     return;
 }
 
