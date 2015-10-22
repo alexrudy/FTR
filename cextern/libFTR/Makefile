@@ -14,7 +14,9 @@ EXAMPLE = example/
 INCLUDEDIR = include/
 HEADERS = $(wildcard $(SRCDIR)*.h)
 INCLUDE = $(patsubst $(SRCDIR)%.h,$(INCLUDEDIR)%.h, $(HEADERS))
-TARGET = $(LIBDIR)libftr.so ftr-example recon-timing $(INCLUDE)
+PROGS_C = $(wildcard $(EXAMPLE)*.c)
+PROGS = $(subst _,-, $(patsubst $(EXAMPLE)%.c,%, $(PROGS_C)))
+TARGET = $(LIBDIR)libftr.so $(INCLUDE) $(PROGS)
 OBJECTS = $(BUILDDIR)ftr.o $(BUILDDIR)slopemanage.o
 
 all: $(TARGET)
@@ -30,17 +32,23 @@ $(LIBDIR)lib%.so : $(OBJECTS)
 	@mkdir -p $(LIBDIR)
 	$(CC) $(LDFLAGS) -shared -o $@ $^
 	
-ftr-example : $(EXAMPLE)ftr_example.o $(LIBDIR)libftr.so
-	$(CC) $(LDFLAGS) -L$(LIBDIR) -I$(INCLUDEDIR) -lftr -o $@ $<
+ftr-example : $(EXAMPLE)ftr_example.o $(EXAMPLE)clock.o $(LIBDIR)libftr.so
+	$(CC) $(LDFLAGS) -L$(LIBDIR) -I$(INCLUDEDIR) -lftr -o $@ $< $(EXAMPLE)clock.o
 
-recon-timing : $(EXAMPLE)recon_timing.o $(LIBDIR)libftr.so
+recon-timing : $(EXAMPLE)recon_timing.o $(EXAMPLE)clock.o $(LIBDIR)libftr.so
+	$(CC) $(LDFLAGS) -L$(LIBDIR) -I$(INCLUDEDIR) -lftr -lopenblas -o $@ $< $(EXAMPLE)clock.o
+
+aperture-test : $(EXAMPLE)aperture_test.o $(LIBDIR)libftr.so
 	$(CC) $(LDFLAGS) -L$(LIBDIR) -I$(INCLUDEDIR) -lftr -lopenblas -o $@ $<
-
 
 $(INCLUDEDIR)%.h : $(SRCDIR)%.h
 	@mkdir -p $(INCLUDEDIR)
 	cp $< $(INCLUDEDIR)
 	
+.PHONY: clock
+clock:
+	
+
 clean:
 	rm -f $(TARGET)
 	rm -rf $(LIBDIR)
@@ -48,6 +56,4 @@ clean:
 	rm -rf $(INCLUDEDIR)
 
 show:
-	@echo $(SRCDIR) $(INCLUDEDIR)
-	@echo $(HEADERS)
-	@echo $(INCLUDE)
+	@echo $(PROGS)
