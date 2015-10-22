@@ -4,6 +4,7 @@
 # This is the build target for the example FTR script.
 ftr-example
 recon-timing
+aperture-test
 
 # Thes are built targets:
 include/*
