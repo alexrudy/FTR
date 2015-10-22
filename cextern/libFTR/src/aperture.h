@@ -5,37 +5,69 @@
 //  Created by Alexander Rudy on 2015-10-20.
 //  Copyright 2015 Alexander Rudy. All rights reserved.
 //
+#include "dbg.h"
 #ifndef APERTURE_H_E17EC070
 #define APERTURE_H_E17EC070
-
+#include <stdlib.h>
+#include <math.h>
 /*
 Tools for making apertures.
 */
-int make_aperture(const int ny, const int nx, int * ap);
-int make_aperture_with_radii(const int ny, const int nx, int * ap, const double outer_radius, const double inner_radius);
-void print_aperture(const int ny, const int nx, int * ap);
+
+// Structures for apertures.
+typedef struct aperture_s * aperture;
+
+struct aperture_s {
+  int nx, ny; // Dimensions of the aperture.
+  int * ap; // Pointer to the aperture array.
+  int ni; // Number of illuminated subapertures.
+};
+
+aperture aperture_create(const int ny, const int nx);
+aperture aperture_create_with_radii(const int ny, const int nx, const double outer_radius, const double inner_radius);
+void aperture_print(const aperture ap);
+void aperture_destroy(aperture ap);
+
+#ifdef SLOPEMANAGE_H
+sm_plan slope_management_plan_from_aperture(aperture ap);
+
+sm_plan slope_management_plan_from_aperture(aperture ap)
+{
+  return slope_management_plan(ap->ny, ap->nx, ap->ap);
+}
+#endif
 
 /*
 Make a standard circular aperture with 1px padding around the edges
 and no central obscuration.
-Returns the number of illuminated subapertures.
+Returns the aperture structure.
 */
-int make_aperture(const int ny, const int nx, int * ap)
+aperture aperture_create(const int ny, const int nx)
 {
     double outer_radius = ((double)nx / 2.0) - 1.0;
-    double inner_radius = outer_radius / 6.0 + 0.5;
-    return make_aperture_with_radii(ny, nx, ap, outer_radius, inner_radius);
+    double inner_radius = 0.0;
+    return aperture_create_with_radii(ny, nx, outer_radius, inner_radius);
 }
 
 /*
 Make a standard circular aperture with an inner and outer radius provided.
 Returns the number of illuminated subapertures.
 */
-int make_aperture_with_radii(const int ny, const int nx, int * ap, const double outer_radius, const double inner_radius)
+aperture aperture_create_with_radii(const int ny, const int nx, const double outer_radius, const double inner_radius)
 {
   int i, j, t = 0;
   double x, y;
   double radius;
+  aperture ap = NULL;
+  ap = malloc(sizeof(struct aperture_s));
+  check_mem(ap);
+  
+  ap->nx = nx;
+  ap->ny = ny;
+  ap->ni = 0;
+  ap->ap = malloc(sizeof(int) * nx * ny);
+  check_mem(ap->ap);
+  
   for(i = 0; i < nx; ++i)
   {
       x = i - ((double)nx / 2.0) + 0.5;
@@ -44,33 +76,45 @@ int make_aperture_with_radii(const int ny, const int nx, int * ap, const double 
           y = j - ((double)ny / 2.0) + 0.5;
           radius = sqrt((x * x) + (y * y));
           if(radius < outer_radius && radius >= inner_radius) {
-              ap[(i * nx) + j] = 1;
+              ap->ap[(i * nx) + j] = 1;
           }else{
-              ap[(i * nx) + j] = 0;
+              ap->ap[(i * nx) + j] = 0;
           }
-          t += ap[(i * nx) + j];
+          ap->ni += ap->ap[(i * nx) + j];
       }
   }
-  return t;
+  return ap;
+error:
+  aperture_destroy(ap);
+  return NULL;
 }
 
-void print_aperture(const int ny, const int nx, int * ap)
+void aperture_destroy(aperture ap)
+{
+  if(ap){
+    if(ap->ap) free(ap->ap);
+    free(ap);
+  }
+  return;
+}
+
+void aperture_print(const aperture ap)
 {
   int i, j, ns = 0;
   double x, y;
   double radius;
   double rguess = 0.0;
-  for(i = 0; i < nx; ++i)
+  for(i = 0; i < ap->nx; ++i)
   {
-    x = i - ((double)nx / 2.0) + 0.5;
+    x = i - ((double)ap->nx / 2.0) + 0.5;
     
-      for(j = 0; j < ny; ++j)
+      for(j = 0; j < ap->ny; ++j)
       {
-        y = j - ((double)ny / 2.0) + 0.5;
+        y = j - ((double)ap->ny / 2.0) + 0.5;
         radius = sqrt((x * x) + (y * y));
-        printf("%d ", ap[(i * nx) + j]);
-        ns += ap[(i * nx) + j];
-        if(ap[(i * nx) + j] == 1 && radius > rguess) rguess = radius;
+        printf("%d ", ap->ap[(i * ap->nx) + j]);
+        ns += ap->ap[(i * ap->nx) + j];
+        if(ap->ap[(i * ap->nx) + j] == 1 && radius > rguess) rguess = radius;
       }
       printf("\n");
   }
