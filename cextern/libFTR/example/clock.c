@@ -1,5 +1,14 @@
+//
+//  clock.c
+//  FTR
+//
+//  Created by Alexander Rudy on 2015-10-20.
+//  Copyright 2015 Alexander Rudy. All rights reserved.
+//
+
+#include "clock.h"
+
 #ifdef __MACH__
-#include <time.h>
 #include <mach/mach_time.h>
 #define CLOCK_REALTIME 0
 #define CLOCK_MONOTONIC 0
@@ -44,7 +53,7 @@ double nanoseconds(const struct timespec start, const struct timespec end)
     return total;
 }
 
-double moving_average(double average, double duration, int navg)
+double moving_average(double average, const double duration, const int navg)
 {
     return ((average * (double)(navg - 1)) + duration) / (double)navg;
 }
