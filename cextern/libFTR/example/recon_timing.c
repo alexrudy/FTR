@@ -1,32 +1,163 @@
 #include "ftr.h"
 #include "slopemanage.h"
-#include "ftr_example.h"
+#include "clock.h"
 #include "dbg.h"
 #include "aperture.h"
-#include <cblas.h>
+// #include <cblas.h>
+#include <cblas_openblas.h>
 #include <openblas_config.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <math.h>
 
 #define cfree(N) if(N) free(N)
 #define ffree(N) if(N) fftw_free(N)
 
-double pure_ftr_reconstructor(int nx, int ny, int navg, int iters)
+#define MAX_STR_LEN 80
+
+/* Function to create apertures that are appropriately sized.
+Figured this out by trial and error. Had to special case 8.
+Might also have to special case 30, but I'm not sure, becasue
+Don's documents don't line up with Sri's subaperture extraction.
+(Especially w/r/t partially illuminated subapertures).
+*/
+aperture ShaneAO_aperture(const int ng, const int nacross)
+{
+  double outer, inner;
+  switch (nacross) {
+  case 8:
+    outer = 3.6;
+    break;
+  default:
+    outer = ((double)nacross / 2.0) - 1.0;
+  }
+  inner = 0.3 * outer;
+  return aperture_create_with_radii(ng, ng, outer, inner);
+}
+
+///////////////
+// Result types
+///////////////
+
+// Typedefs for reconstructor results.
+typedef struct reconstructor_result * recon_result;
+typedef struct reconstructor_result_part * recon_result_part;
+typedef recon_result (*reconstructor)(aperture ap, int navg, int iters);
+
+/*
+Individual parts have some timing information. We group them in structs here.
+*/
+struct reconstructor_result_part {
+    double duration;
+    char description[MAX_STR_LEN];
+};
+
+/*
+Reconstructors also have a collection of parts for timing.
+*/
+struct reconstructor_result {
+    int n_parts;
+    recon_result_part *parts;
+};
+
+recon_result_part rr_new_part(double duration, char * description)
+{
+    recon_result_part part;
+    part = malloc(sizeof(struct reconstructor_result_part));
+    check_mem(part);
+    part->duration = duration;
+    strncpy(part->description, description, MAX_STR_LEN);
+error:
+    return part;
+}
+
+recon_result rr_new(int n_parts, ...)
+{
+    recon_result result;
+    result = malloc(sizeof(struct reconstructor_result));
+    result->n_parts = n_parts;
+    result->parts = malloc(n_parts * sizeof(struct reconstructor_result_part));
+    va_list argp;
+    va_start(argp, n_parts);
+    for(size_t i = 0; i < n_parts; ++i)
+    {
+        result->parts[i] = va_arg(argp, recon_result_part);
+    }
+    va_end(argp);
+    return result;
+
+}
+
+void rr_print_result(recon_result result, char * description)
+{
+    double duration, total;
+    size_t j;
+    
+    total = 0.0;
+    for(j = 0; j < result->n_parts; ++j)
+    {
+        duration = result->parts[j]->duration;
+        total += duration;
+        printf("* %-40s %6.0f ns %6.1f kHz\n", result->parts[j]->description, duration, 1e6 / duration);
+        
+    }
+    printf("                                           --------- ----------\n");
+    
+    printf("Total %-36s %6.0f ns %6.1f kHz\n", description, total, 1e6 / total);
+    printf("------------------------------------------ --------- ----------\n");
+    
+}
+
+void rr_del_result(recon_result result)
+{
+    size_t i;
+    recon_result_part part;
+    
+    if(result){
+        for(i = 0; i < result->n_parts; ++i)
+        {
+            part = result->parts[i];
+            if(part) free(part);
+        }
+        free(result);
+    }
+    return;
+}
+
+void shuffle(int *array, size_t n) {    
+    srand((unsigned) time(NULL));
+    if (n > 1) {
+        size_t i;
+        for (i = n - 1; i > 0; i--) {
+            size_t j = (unsigned int) (((double)rand()/(double)RAND_MAX)*(i+1));
+            int t = array[j];
+            array[j] = array[i];
+            array[i] = t;
+        }
+    }
+}
+
+////////////////////////////
+// Reconstruction functions:
+////////////////////////////
+
+/*
+Pure FTR, with no accounting for alignment etc.
+*/
+recon_result pure_ftr_reconstructor(aperture ap, int navg, int iters)
 {
   double * sx, * sy, *est;
   struct timespec t_start, t_slopemanage, t_ftr, t_stop;
   double sm_avg = 0.0, ftr_avg = 0.0, total = 0.0;
-  int nn = nx * ny;
+  int nn = ap->nx * ap->ny;
   int i;
-  int *ap;
-  
+  recon_result result;
+  recon_result_part sm, ftr;
   fftw_complex *gx, *gy;
   ftr_plan plan;
   sm_plan manage_plan;
-  
-  printf("--> FTR.\n");
   
   // Allocating plans and memory.
   clock_gettime (CLOCK_REALTIME, &t_start); 
@@ -40,8 +171,6 @@ double pure_ftr_reconstructor(int nx, int ny, int navg, int iters)
   est = fftw_malloc(nn * sizeof(double));
   check_mem(est);
   memset(est, (double)0.0, sizeof(double) * nn);
-  ap = calloc(nn, sizeof(int));
-  check_mem(ap);
   
   gx = fftw_malloc(sizeof(fftw_complex) * nn);
   check_mem(gx);
@@ -50,26 +179,23 @@ double pure_ftr_reconstructor(int nx, int ny, int navg, int iters)
   check_mem(gy);
   memset(gy, (fftw_complex) 1.0, sizeof(fftw_complex) * nn);
   clock_gettime(CLOCK_REALTIME, &t_stop);
-  
-  make_aperture(ny, nx, ap);
-  
+    
   // Zeroing arrays. We don't time this becasue it isn't really relevant.
-  for(i = 0; i < nn; ++i)
-  {
-      sx[i] = 1.0;
-      sy[i] = 1.0;
-      est[i] = 0.0;
-  }
+  memset(sx, (double) 1.0, sizeof(double) * nn);
+  memset(sy, (double) 1.0, sizeof(double) * nn);
+  memset(est, (double) 0.0, sizeof(double) * nn);
   
   clock_gettime (CLOCK_REALTIME, &t_start);
-  plan = ftr_plan_reconstructor(nx, ny, sx, sy, est);
+  
+  // Planning FTR
+  plan = ftr_plan_reconstructor(ap->ny, ap->nx, sx, sy, est);
   check(plan, "allocating plan");
   ftr_set_filter(plan, gx, gy);
-  manage_plan = slope_management_plan(ny, nx, ap);
+  manage_plan = slope_management_plan_from_aperture(ap);
   check(manage_plan, "allocating slope management");
   clock_gettime(CLOCK_REALTIME, &t_stop);
   
-  // Re-zero arrays which might have been touched by the planners.
+  // Seed the slopes with random numbers.
   for(i = 0; i < nn; ++i)
   {
       sx[i] = (double)rand()/100.0;
@@ -85,7 +211,7 @@ double pure_ftr_reconstructor(int nx, int ny, int navg, int iters)
       ftr_reconstruct(plan);
   }
   clock_gettime(CLOCK_REALTIME, &t_stop);
-  printf("Long-Average %.0f ns.\n", nanoseconds(t_start, t_stop) / iters);
+  log_info("Warm-up average %.0f ns.", nanoseconds(t_start, t_stop) / iters);
   
   for(i = 0; i < iters; ++i)
   {
@@ -106,9 +232,9 @@ double pure_ftr_reconstructor(int nx, int ny, int navg, int iters)
       }
   }
   
-  printf("Averaged %.0f ns for slope management.\n", sm_avg);
-  printf("Averaged %.0f ns for ftr.\n", ftr_avg);
-  printf("Total iteration time %.0f ns corresponds to a rate of %.0f kHz\n", (sm_avg + ftr_avg), 1e6 / (sm_avg + ftr_avg));
+  sm = rr_new_part(sm_avg, "Slope Management");
+  ftr = rr_new_part(ftr_avg, "FTR");
+  result = rr_new(2, sm, ftr);
 error:
   if(plan) ftr_destroy(plan);
   if(manage_plan) slope_management_destroy(manage_plan);
@@ -117,29 +243,23 @@ error:
   ffree(est);
   ffree(gx);
   ffree(gy);
-  ffree(ap);
-  return (sm_avg + ftr_avg);
+  return result;
 }
 
-double pure_vmm_reconstructor(int nx, int ny, int navg, int iters)
+recon_result pure_vmm_reconstructor(aperture ap, int navg, int iters)
 {
   double * s, * a, * m;
-  int nn = nx * ny;
-  int ns, *ap;
+  int nn = ap->nx * ap->ny;
+  int ns = 2*ap->ni;
   int na = 32 * 32;
   struct timespec t_start, t_stop;
   double recon_avg = 0.0;
   int i;
   
-  
-  printf("--> VMM.\n");
+  recon_result result;
+  recon_result_part vmm;
   
   // Allocating plans and memory.
-  
-  // Make an aperture so we know how many slopes to use.
-  ap = malloc(sizeof(int) * nn);
-  check_mem(ap);
-  ns = 2*make_aperture(ny, nx, ap);
   
   // Allocate Slopes
   s = malloc(sizeof(double) * ns);
@@ -164,7 +284,7 @@ double pure_vmm_reconstructor(int nx, int ny, int navg, int iters)
       cblas_dgemv(CblasRowMajor, CblasNoTrans, na, ns, 1.0, m, ns, s, 1, 0.0, a, 1);
   }
   clock_gettime(CLOCK_REALTIME, &t_stop);
-  printf("Long-Average %.0f ns.\n", nanoseconds(t_start, t_stop) / iters);
+  log_info("Warm-up average %.0f ns.", nanoseconds(t_start, t_stop) / iters);
   
   for(i = 0; i < iters; ++i)
   {
@@ -180,36 +300,35 @@ double pure_vmm_reconstructor(int nx, int ny, int navg, int iters)
         recon_avg = moving_average(recon_avg, nanoseconds(t_start, t_stop), navg);
       }
   }
-  printf("Averaged %.0f ns for matrix multiply (%dx%d).\n", recon_avg, na, ns);
-  printf("Total iteration time %.0f ns corresponds to a rate of %.0f kHz\n", recon_avg, 1e6 / recon_avg);
+  char vma_desc[80];
+  sprintf(vma_desc, "VMM slopes to actuators (%dx%d)", na, ns);
+  vmm = rr_new_part(recon_avg, vma_desc);
+  result = rr_new(1, vmm);
+  // rr_print_result(result, "VMM");
+  
 error:
   cfree(s);
   cfree(a);
   cfree(m);
-  return recon_avg;
+  return result;
 }
 
-double dual_vmm_reconstructor(int nx, int ny, int navg, int iters)
+recon_result dual_vmm_reconstructor(aperture ap, int navg, int iters)
 {
   double * s, *p, * a, * m, * ma;
-  int nn = nx * ny;
+  int nn = ap->nx * ap->ny;
   int na = 32 * 32;
-  int ns, *ap;
-  int nm = (nx / 2 + 1) * ny;
+  int ns = 2 * ap->ni;
+  int nm = (ap->nx / 2 + 1) * ap->ny;
   struct timespec t_start, t_first, t_stop;
   double recon_avg = 0.0, apply_avg = 0.0, total = 0.0;
   int i;
   
-  
-  printf("--> Dual VMM.\n");
+  recon_result result;
+  recon_result_part vmm, vma;
   
   // Allocating plans and memory.
   clock_gettime (CLOCK_REALTIME, &t_start); 
-  
-  // Make an aperture so we know how many slopes to use.
-  ap = malloc(sizeof(int) * nn);
-  check_mem(ap);
-  ns = 2*make_aperture(ny, nx, ap);
   
   s = malloc(sizeof(double) * ns);
   check_mem(s);
@@ -238,7 +357,7 @@ double dual_vmm_reconstructor(int nx, int ny, int navg, int iters)
       cblas_dgemv(CblasRowMajor, CblasNoTrans, na, nm, 1.0, ma, nm, p, 1, 0.0, a, 1);
   }
   clock_gettime(CLOCK_REALTIME, &t_stop);
-  printf("Long-Average %.0f ns.\n", nanoseconds(t_start, t_stop) / iters);
+  log_info("Warm-up average %.0f ns.", nanoseconds(t_start, t_stop) / iters);
   
   for(i = 0; i < iters; ++i)
   {
@@ -258,36 +377,43 @@ double dual_vmm_reconstructor(int nx, int ny, int navg, int iters)
         apply_avg = moving_average(apply_avg, nanoseconds(t_first, t_stop), navg);
       }
   }
-  printf("Averaged %.0f ns for reconstruction matrix multiply (%dx%d).\n", recon_avg, nm, ns);
-  printf("Averaged %.0f ns for apply matrix multiply (%dx%d).\n", apply_avg, na, nm);
-  total = apply_avg + recon_avg;
-  printf("Total iteration time %.0f ns corresponds to a rate of %.0f kHz\n", total, 1e6 / total);
+  
+  char vmm_desc[80], vma_desc[80];
+  sprintf(vmm_desc, "VMM slopes to modes (%dx%d)", nm, ns);
+  vmm = rr_new_part(recon_avg, vmm_desc);
+  sprintf(vma_desc, "VMM modes to actuators (%dx%d)", na, nm);
+  vma = rr_new_part(apply_avg, vma_desc);
+  result = rr_new(2, vmm, vma);
+  // rr_print_result(result, "Dual VMM");
+  
 error:
   cfree(s);
   cfree(p);
   cfree(a);
   cfree(m);
   cfree(ma);
-  return total;
+  return result;
 }
 
-double hybrid_reconstructor(int nx, int ny, int navg, int iters)
+recon_result hybrid_reconstructor(aperture ap, int navg, int iters)
 {
   double * sx, * sy, * est;
   double * a, * m;
   struct timespec t_start, t_slopemanage, t_ftr, t_stop;
   double sm_avg = 0.0, ftr_avg = 0.0, mat_avg = 0.0;
-  int nn = nx * ny;
+  int nn = ap->nx * ap->ny;
   int i;
-  int ns, *ap;
+  int ns = 2*ap->ni;
   int na = 32 * 32;
-  int nm = (nx / 2 + 1) * ny;
+  int nm = (ap->nx / 2 + 1) * ap->ny;
+  
+  recon_result result;
+  recon_result_part sm, ftr, vma;
+  
   
   fftw_complex *gx, *gy;
   ftr_plan plan;
   sm_plan manage_plan;
-  
-  printf("--> FTR + VMM.\n");
   
   // Allocating plans and memory.
   clock_gettime (CLOCK_REALTIME, &t_start); 
@@ -301,10 +427,6 @@ double hybrid_reconstructor(int nx, int ny, int navg, int iters)
   est = fftw_malloc(nn * sizeof(double));
   check_mem(est);
   memset(est, (double)0.0, sizeof(double) * nn);
-  ap = calloc(nn, sizeof(int));
-  check_mem(ap);
-  ns = 2*make_aperture(ny, nx, ap);
-  print_aperture(ny, nx, ap);
   
   gx = fftw_malloc(sizeof(fftw_complex) * nn);
   memset(gx, (fftw_complex) 1.0, sizeof(fftw_complex) * nn);
@@ -329,10 +451,11 @@ double hybrid_reconstructor(int nx, int ny, int navg, int iters)
   }
   
   clock_gettime (CLOCK_REALTIME, &t_start); 
-  plan = ftr_plan_reconstructor(nx, ny, sx, sy, est);
+  plan = ftr_plan_reconstructor(ap->nx, ap->ny, sx, sy, est);
   check(plan, "Allocating FTR Plan");
+  
   ftr_set_filter(plan, gx, gy);
-  manage_plan = slope_management_plan(ny, nx, ap);
+  manage_plan = slope_management_plan_from_aperture(ap);
   check(manage_plan, "Allocating SM Plan");
   clock_gettime(CLOCK_REALTIME, &t_stop);
   
@@ -351,7 +474,7 @@ double hybrid_reconstructor(int nx, int ny, int navg, int iters)
       cblas_dgemv(CblasRowMajor, CblasNoTrans, na, nm, 1.0, m, nm, est, 1, 0.0, a, 1);
   }
   clock_gettime (CLOCK_REALTIME, &t_stop);
-  printf("Long-Average %.0f ns.\n", nanoseconds(t_start, t_stop) / iters);
+  log_info("Warm-up average %.0f ns.", nanoseconds(t_start, t_stop) / iters);
   
   for(i = 0; i < iters; ++i)
   {
@@ -375,32 +498,51 @@ double hybrid_reconstructor(int nx, int ny, int navg, int iters)
       }
   }
   
-  printf("Averaged %.0f ns for slope management.\n", sm_avg);
-  printf("Averaged %.0f ns for ftr.\n", ftr_avg);
-  printf("Averaged %.0f ns for vmm (%dx%d).\n", mat_avg, na, nm);
-  printf("Total iteration time %.0f ns corresponds to a rate of %.0f kHz\n", (sm_avg + ftr_avg + mat_avg), 1e6 / (sm_avg + ftr_avg + mat_avg));
+  char vma_desc[80];
+  sprintf(vma_desc, "VMM modes to actuators (%dx%d)", na, nm);
+  vma = rr_new_part(mat_avg, vma_desc);
+  sm = rr_new_part(sm_avg, "Slope Management");
+  ftr = rr_new_part(ftr_avg, "FTR");
+  result = rr_new(3, sm, ftr, vma);
+  
 error:
   if(plan) ftr_destroy(plan);
   if(manage_plan) slope_management_destroy(manage_plan);
   ffree(sx);
   ffree(sy);
   ffree(est);
-  ffree(ap);
   ffree(gx);
   ffree(gy);
   cfree(a);
   cfree(m);
-  return (sm_avg + ftr_avg + mat_avg);
+  return result;
   
 }
+
+#define NTESTS 4
 
 int main (int argc, char const *argv[])
 {
   int navg = 1e3;
-  double ftr, vmm, hybrid, dual;
-  int nx = 36;
-  int ny = 36;
+  double total, duration;
+  int ng = 32;
+  size_t i, j;
+  int nacross = 30;
   int iters;
+  struct recon_test {
+      reconstructor func;
+      recon_result result;
+      char * description;
+  };
+  struct recon_test tests[NTESTS] = {
+    { .func = pure_ftr_reconstructor, .result = NULL, .description = "FTR" },
+    { .func = pure_vmm_reconstructor, .result = NULL, .description = "VMM" },
+    { .func = dual_vmm_reconstructor, .result = NULL, .description = "Dual VMM" },
+    { .func = hybrid_reconstructor,   .result = NULL, .description = "FTR + VMM" },
+  };
+  int order[NTESTS] = { 0, 1, 2, 3};
+  shuffle(order, NTESTS);
+  aperture ap;
   srand((unsigned) time(NULL));
   // ftr_init(12);
   if(argc > 1)
@@ -409,23 +551,36 @@ int main (int argc, char const *argv[])
   }else{
     iters = 1e5;
   }
+  if(argc > 2)
+  {
+    ng = (int)atoi(argv[2]);
+  }
   if(argc > 3)
   {
-    nx = (int)atoi(argv[2]);
-    ny = (int)atoi(argv[3]);
+    nacross = (int)atoi(argv[3]);
   }
-  printf("Simulating grid of %d x %d\n", nx, ny);
-  printf("Testing %d iterations\n", iters);
-  dual = dual_vmm_reconstructor(nx, ny, navg, iters);  
-  hybrid = hybrid_reconstructor(nx, ny, navg, iters);
-  ftr = pure_ftr_reconstructor(nx, ny, navg, iters);
-  vmm = pure_vmm_reconstructor(nx, ny, navg, iters);
   
-  printf("Summary:\n");
-  printf("FTR:      %6.0f ns %.1f kHz\n", ftr, 1e6 / ftr);
-  printf("VMM:      %6.0f ns %.1f kHz\n", vmm, 1e6 / vmm);
-  printf("Hybrid:   %6.0f ns %.1f kHz\n", hybrid, 1e6 / hybrid);
-  printf("Dual VMM: %6.0f ns %.1f kHz\n", dual, 1e6 / dual);
+  ap = ShaneAO_aperture(ng, nacross);
+  printf("Simulating %d-across on a grid of %d x %d with %d subapertures.\n", nacross, ap->nx, ap->ny, ap->ni);
+  printf("Testing %d iterations.\n", iters);
+  
+  for(i = 0; i < NTESTS; ++i)
+  {
+      printf("--> %s\n", tests[order[i]].description);
+      tests[order[i]].result = tests[order[i]].func(ap, navg, iters);
+  }
+  
+  printf("--> Summary:\n");
+  printf("------------------------------------------ --------- ----------\n");
+  
+  for(i = 0; i < NTESTS; ++i)
+  {
+      rr_print_result(tests[i].result, tests[i].description);
+  }
+  // printf("FTR:      %6.0f ns %.1f kHz\n", results[2], 1e6 / results[2]);
+  // printf("VMM:      %6.0f ns %.1f kHz\n", results[3], 1e6 / results[3]);
+  // printf("Hybrid:   %6.0f ns %.1f kHz\n", results[1], 1e6 / results[1]);
+  // printf("Dual VMM: %6.0f ns %.1f kHz\n", results[0], 1e6 / results[0]);
   
   return 1;
 }

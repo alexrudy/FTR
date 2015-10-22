@@ -8,24 +8,9 @@
 
 #include "ftr.h"
 #include "slopemanage.h"
-#include "ftr_example.h"
+#include "clock.h"
 #include "dbg.h"
-
-void make_aperture(int * ap, const int nx, const int ny)
-{
-    int i, j;
-    for(i = 0; i < nx; ++i)
-    {
-        for(j = 0; j < ny; ++j)
-        {
-            if(i == 0 || j == 0 || i == nx - 1 || j == ny - 1) {
-                ap[(i * nx) + j] = 0;
-            }else{
-                ap[(i * nx) + j] = 1;
-            }
-        }
-    }
-}
+#include "aperture.h"
 
 int main (int argc, char const *argv[])
 {
@@ -38,7 +23,7 @@ int main (int argc, char const *argv[])
     int nn = nx * ny;
     int iters;
     double *sx, *sy, *est;
-    int *ap;
+    aperture ap;
     fftw_complex *gx, *gy;
     ftr_plan plan;
     sm_plan manage_plan;
@@ -56,8 +41,7 @@ int main (int argc, char const *argv[])
     sx = calloc(nn, sizeof(double));
     sy = calloc(nn, sizeof(double));
     est = calloc(nn, sizeof(double));
-    ap = calloc(nn, sizeof(int));
-    make_aperture(ap, nx, ny);
+    ap = aperture_create(ny, nx);
     
     gx = fftw_malloc(sizeof(fftw_complex) * nn);
     memset(gx, 0.0, sizeof(fftw_complex) * nn);
@@ -69,7 +53,7 @@ int main (int argc, char const *argv[])
     printf("Planning reconstruction.\n");
     plan = ftr_plan_reconstructor(nx, ny, sx, sy, est);
     ftr_set_filter(plan, gx, gy);
-    manage_plan = slope_management_plan(ny, nx, ap);
+    manage_plan = slope_management_plan(ny, nx, ap->ap);
     
     for(i = 0; i < iters; ++i)
     {
@@ -105,6 +89,7 @@ int main (int argc, char const *argv[])
     printf("Freeing...\n");
     slope_management_destroy(manage_plan);
     ftr_destroy(plan);
+    aperture_destroy(ap);
     
     printf("Done!\n");
     return 0;
