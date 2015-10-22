@@ -76,7 +76,7 @@ ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *
   size_t i;
   int x, y, io, nfo;
   ftr_plan recon;
-  recon = malloc(sizeof(struct ftr_plan_s));
+  recon = calloc(1, sizeof(struct ftr_plan_s));
   check_mem(recon);
   
   /* Dimensions of the arrays. */
@@ -89,9 +89,9 @@ ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *
   
   
   /* Index array */
-  recon->ift = malloc(sizeof(int) * recon->nn);
+  recon->ift = calloc(recon->nn, sizeof(int));
   check_mem(recon->ift);
-  recon->ifs = malloc(sizeof(int) * recon->nft);
+  recon->ifs = calloc(recon->nft, sizeof(int));
   check_mem(recon->ifs);
   
   /* Input and output arrays. */

@@ -7,8 +7,8 @@
 //
 #include <stdlib.h>
 
-#ifndef SLOPEMANAGE_H_18A446D7
-#define SLOPEMANAGE_H_18A446D7
+#ifndef SLOPEMANAGE_H
+#define SLOPEMANAGE_H
 
 // Type definitions
 
@@ -30,4 +30,4 @@ void slope_management(const int ny, const int nx, const int *ap, double * sy, do
 
 // Destroy the memory allocated by a slope management plan.
 void slope_management_destroy(sm_plan);
-#endif /* end of include guard: SLOPEMANAGE_H_18A446D7 */
+#endif /* end of include guard: SLOPEMANAGE_H */
