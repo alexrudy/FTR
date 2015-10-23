@@ -6,7 +6,8 @@
 #  Copyright 2015 Alexander Rudy. All rights reserved.
 #
 
-LDFLAGS = -g -O2 -Wall -lfftw3_threads -lfftw3 -lm -lpthread -L /opt/local/lib
+LDFLAGS = -g -O3 -Wall -lfftw3_threads -lfftw3 -lm -lpthread -L /opt/local/lib
+CCFLAGS = -g -O3 -Wall
 BUILDDIR = build/
 SRCDIR = src/
 LIBDIR = lib/
