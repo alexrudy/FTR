@@ -5,11 +5,13 @@
 //  Created by Alexander Rudy on 2015-10-20.
 //  Copyright 2015 Alexander Rudy. All rights reserved.
 //
+#ifndef APERTURE_H
+#define APERTURE_H
+
 #include "dbg.h"
-#ifndef APERTURE_H_E17EC070
-#define APERTURE_H_E17EC070
 #include <stdlib.h>
 #include <math.h>
+
 /*
 Tools for making apertures.
 */
@@ -23,18 +25,20 @@ struct aperture_s {
   int ni; // Number of illuminated subapertures.
 };
 
+/*
+Function Prototypes
+*/
 aperture aperture_create(const int ny, const int nx);
 aperture aperture_create_with_radii(const int ny, const int nx, const double outer_radius, const double inner_radius);
 void aperture_print(const aperture ap);
 void aperture_destroy(aperture ap);
 
+/*
+Functions to enable compatibility between slopemanagement
+and aperture.h
+*/
 #ifdef SLOPEMANAGE_H
-sm_plan slope_management_plan_from_aperture(aperture ap);
-
-sm_plan slope_management_plan_from_aperture(aperture ap)
-{
-  return slope_management_plan(ap->ny, ap->nx, ap->ap);
-}
+#define slope_management_plan_from_aperture(A) slope_management_plan(A->ny, A->nx, A->ap)
 #endif
 
 /*
@@ -121,4 +125,4 @@ void aperture_print(const aperture ap)
   printf("ns = %d radius? = %.1f\n", ns, rguess);
 }
 
-#endif /* end of include guard: APERTURE_H_E17EC070 */
+#endif /* end of include guard: APERTURE_H */
