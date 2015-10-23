@@ -84,11 +84,66 @@ Fourier Transform Reconstructor API
 
 .. c:function:: void ftr_reconstruct_with_callback(ftr_plan recon, ftr_estimate_callback callback, void * data)
 
-    :param ftr_plan recon: The :c:type:`ftr_plan` struct for this reconstructor.
+    Perform the reconstruction, and use a callback to adjust the fourier transform of the estimate. See :c:type:`ftr_estimate_callback` for a descritpion of the callback function required to apply additional filters to the fourier transform of the estimate.
+    
+    :param ftr_plan recon: The :c:type:`ftr_plan` for this reconstructor.
     :param ftr_estimate_callback callback: A callback function to be applied to the fourier transform of the phase estimate.
     :param void* data: A pointer to data required by `callback`.
 
-.. c:function:: void ftr_destroy
+.. c:function:: void ftr_destroy(ftr_plan recon)
+    
+    Destroy an FTR plan, deallocating memory as necessary.
+    
+    :param ftr_plan recon: The :c:type:`ftr_plan` to deallocate.
+    
+.. c:function:: void ftr_forward_transform(ftr_plan recon)
+    
+    Perform only the forward FFTs to transform the slopes into the Fourier domain.
+    
+    :param ftr_plan recon: The :c:type:`ftr_plan` to use for the forward transform.
+    
+.. c:function:: void ftr_apply_filter(ftr_plan recon)
+    
+    Only apply the filter to the transformed slopes, to estimate the phase.
+    
+    :param ftr_plan recon: The :c:type:`ftr_plan` to use to apply the filter.
+    
+.. c:function:: void ftr_backward_transform(ftr_plan recon)
+    
+    Perform the backward FFT to transform the Fourier mode estimate of the phase into a real phase.
+    
+    :param ftr_plan recon: The :c:type:`ftr_plan` to use for the backward transform.
+    
+.. c:function:: void ftr_apply_callback(ftr_plan recon, ftr_estimate_callback callback, void * data)
+    
+    Apply a callback function to the estimated phase in the Fourier domain.
+    
+    :param ftr_plan recon: The :c:type:`ftr_plan` for this reconstructor.
+    :param ftr_estimate_callback callback: A callback function to be applied to the fourier transform of the phase estimate.
+    :param void* data: A pointer to data required by `callback`.
+    
+.. c:function:: void ftr_map_half_complex(int ny, int nx, int * map, int * imap)
+    
+    Compute the mapping between half-complex transforms and the fully-expanded transform, for flattened arrays.
+    
+    In FFTW, the complex side of a real-to-complex transform (or vice-versa) does not include all the data points, and rather elimintates some of the data points which can be reconstructed based on the Hermitian symmetry of the output. See the FFTW documentation on `The Halfcomplex-format DFT <http://www.fftw.org/doc/The-Halfcomplex_002dformat-DFT.html#The-Halfcomplex_002dformat-DFT>`_ for more details on the exact specifics of this format. This function simply provides the mapping between a Halfcomplex array and a full array, as a pair of integer pointers.
+    
+    Using the pointer ``map``, you can map from a Halfcomplex array to a full array in 2D::
+        
+        int i;
+        int *map, *imap;
+        double *full_array, *half_array;
+        full_array[i] = half_array[map[i]];
+        half_array[i] = full_array[imap[i]];
+        
+    
+    The pointers to `map` and `imap` should be allocated before calling this function.
+    
+    :param int ny: Number of y grid points.
+    :param int nx: Number of x grid points.
+    :param int* map: Mapping of full indices to halfcomplex indicies.
+    :param int* imap: Mapping of halfcomplex indicies to full indices.
+    
 
 C Impelmentation of Slope Management for non-periodic domains
 =============================================================
@@ -135,6 +190,9 @@ A minimial example of slope management::
 
     // Free allocated memory at the end.
     slope_management_destroy(plan);
+    free(sx);
+    free(sy);
+    free(ap);
 
 
 Slope Management API
