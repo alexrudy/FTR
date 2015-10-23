@@ -16,6 +16,8 @@
 #define ffree(N) if(N) fftw_free(N)
 
 #define MAX_STR_LEN 80
+#define NACTUATORS 1024 + 52
+#define NCOEFF 14
 
 /* Function to create apertures that are appropriately sized.
 Figured this out by trial and error. Had to special case 8.
@@ -106,7 +108,7 @@ void rr_print_result(recon_result result, char * description)
     printf("                                           --------- ----------\n");
     
     printf("Total %-36s %6.0f ns %6.1f kHz\n", description, total, 1e6 / total);
-    printf("------------------------------------------ --------- ----------\n");
+    printf("========================================== ========= ==========\n");
     
 }
 
@@ -250,8 +252,8 @@ recon_result pure_vmm_reconstructor(aperture ap, int navg, int iters)
 {
   double * s, * a, * m;
   int nn = ap->nx * ap->ny;
-  int ns = 2*ap->ni;
-  int na = 32 * 32;
+  int ns = 2*ap->ni + NCOEFF;
+  int na = NACTUATORS + NCOEFF;
   struct timespec t_start, t_stop;
   double recon_avg = 0.0;
   int i;
@@ -317,9 +319,9 @@ recon_result dual_vmm_reconstructor(aperture ap, int navg, int iters)
 {
   double * s, *p, * a, * m, * ma;
   int nn = ap->nx * ap->ny;
-  int na = 32 * 32;
+  int na = NACTUATORS + NCOEFF;
   int ns = 2 * ap->ni;
-  int nm = (ap->nx / 2 + 1) * ap->ny;
+  int nm = (ap->nx / 2 + 1) * ap->ny + NCOEFF;
   struct timespec t_start, t_first, t_stop;
   double recon_avg = 0.0, apply_avg = 0.0, total = 0.0;
   int i;
@@ -404,8 +406,8 @@ recon_result hybrid_reconstructor(aperture ap, int navg, int iters)
   int nn = ap->nx * ap->ny;
   int i;
   int ns = 2*ap->ni;
-  int na = 32 * 32;
-  int nm = (ap->nx / 2 + 1) * ap->ny;
+  int na = NACTUATORS + NCOEFF;
+  int nm = (ap->nx / 2 + 1) * ap->ny + NCOEFF;
   
   recon_result result;
   recon_result_part sm, ftr, vma;
@@ -520,20 +522,21 @@ error:
 }
 
 #define NTESTS 4
-
 int main (int argc, char const *argv[])
 {
+  // DEFAULTS
   int navg = 1e3;
-  double total, duration;
-  int ng = 32;
-  size_t i, j;
-  int nacross = 30;
-  int iters;
+  int ng = 32, nacross = 30;
+  int iters = 1e5;
+  int nthread_max = 1;
+  
   struct recon_test {
       reconstructor func;
       recon_result result;
       char * description;
   };
+  double total, duration;
+  size_t i, j;
   struct recon_test tests[NTESTS] = {
     { .func = pure_ftr_reconstructor, .result = NULL, .description = "FTR" },
     { .func = pure_vmm_reconstructor, .result = NULL, .description = "VMM" },
@@ -544,24 +547,46 @@ int main (int argc, char const *argv[])
   shuffle(order, NTESTS);
   aperture ap;
   srand((unsigned) time(NULL));
-  // ftr_init(12);
-  if(argc > 1)
-  {
-    iters = (int)atof(argv[1]);
-  }else{
-    iters = 1e5;
-  }
-  if(argc > 2)
-  {
-    ng = (int)atoi(argv[2]);
-  }
-  if(argc > 3)
-  {
-    nacross = (int)atoi(argv[3]);
-  }
+  
+  
+  // Parse Arguments.
+  if(argc > 1) iters = (int)atof(argv[1]);
+  if(argc > 2) ng = (int)atoi(argv[2]);
+  if(argc > 3) nacross = (int)atoi(argv[3]);
+  if(argc > 4) nthread_max = (int)atoi(argv[4]);
   
   ap = ShaneAO_aperture(ng, nacross);
   printf("Simulating %d-across on a grid of %d x %d with %d subapertures.\n", nacross, ap->nx, ap->ny, ap->ni);
+  
+  if(nthread_max > 1){
+    printf("Testing FTR threading, from 1 to %d threads.\n", nthread_max);
+    ftr_init(1);
+    struct recon_test * threadtests, test;
+    char desc[MAX_STR_LEN];
+    
+    threadtests = malloc(sizeof(struct recon_test) * nthread_max);
+    for(i = 0; i < nthread_max; ++i)
+    {
+      sprintf(desc, "FTR with %d threads", (int)i + 1);
+      threadtests[i] = (struct recon_test){ .func = pure_ftr_reconstructor, .result = NULL, .description = NULL };
+      threadtests[i].description = malloc(sizeof(char) * MAX_STR_LEN);
+      strncpy(threadtests[i].description, desc, MAX_STR_LEN);
+    }
+    for(i = 0; i < nthread_max; ++i)
+    {
+      printf("--> %s\n", threadtests[i].description);
+      fftw_plan_with_nthreads(i + 1);
+      threadtests[i].result = threadtests[i].func(ap, navg, iters);
+    }
+    printf("--> Threading Summary:\n");
+    printf("========================================== ========= ==========\n");
+    for(i = 0; i < nthread_max; ++i)
+    {
+      rr_print_result(threadtests[i].result, threadtests[i].description);
+    }
+  }
+  
+  
   printf("Testing %d iterations.\n", iters);
   
   for(i = 0; i < NTESTS; ++i)
@@ -571,16 +596,12 @@ int main (int argc, char const *argv[])
   }
   
   printf("--> Summary:\n");
-  printf("------------------------------------------ --------- ----------\n");
+  printf("========================================== ========= ==========\n");
   
   for(i = 0; i < NTESTS; ++i)
   {
       rr_print_result(tests[i].result, tests[i].description);
   }
-  // printf("FTR:      %6.0f ns %.1f kHz\n", results[2], 1e6 / results[2]);
-  // printf("VMM:      %6.0f ns %.1f kHz\n", results[3], 1e6 / results[3]);
-  // printf("Hybrid:   %6.0f ns %.1f kHz\n", results[1], 1e6 / results[1]);
-  // printf("Dual VMM: %6.0f ns %.1f kHz\n", results[0], 1e6 / results[0]);
   
   return 1;
 }
