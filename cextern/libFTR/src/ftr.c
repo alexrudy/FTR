@@ -11,7 +11,7 @@
 #include "dbg.h"
 
 #ifndef FTR_PRECOMUTE
-#define FTR_PRECOMUTE FFTW_MEASURE
+#define FTR_PRECOMUTE FFTW_PATIENT
 #endif
 
 struct ftr_plan_s {
@@ -155,13 +155,22 @@ ftr_set_filter(ftr_plan recon, const fftw_complex *gx, const fftw_complex *gy) {
   }
 }
 
+#ifndef FTR_RECONSTRUCT_AS_MACRO
 void
 ftr_reconstruct(ftr_plan recon)
 {
     ftr_reconstruct_with_callback(recon, NULL, NULL);
     return;
-}  
+}
+#endif
 
+void
+ftr_forward_transform(ftr_plan recon)
+{
+  // Forward slope transforms.
+  fftw_execute(recon->p_sx);
+  fftw_execute(recon->p_sy);
+}
 
 void
 ftr_reconstruct_with_callback(ftr_plan recon, ftr_estimate_callback callback, void * data)
@@ -171,7 +180,7 @@ ftr_reconstruct_with_callback(ftr_plan recon, ftr_estimate_callback callback, vo
     fftw_execute(recon->p_sy);
   
     // Estimation using the gx/gy filters.
-    ftr_estimate(recon);
+    ftr_apply_filter(recon);
     
     // Filtering callback for the estimate.
     if(callback) callback(data, recon->est_ft);
@@ -181,7 +190,13 @@ ftr_reconstruct_with_callback(ftr_plan recon, ftr_estimate_callback callback, vo
     return; 
 }
 
-void ftr_estimate(ftr_plan recon) {
+void
+ftr_backward_transform(ftr_plan recon)
+{
+  fftw_execute(recon->p_est);
+}
+
+void ftr_apply_filter(ftr_plan recon) {
   size_t i, j;
   int x, y;
   for(i = 0; i < recon->nft; ++i)

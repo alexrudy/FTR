@@ -9,6 +9,9 @@
 #ifndef FTR_H_D3963E38
 #define FTR_H_D3963E38
 
+#define FTR_PRECOMUTE FFTW_MEASURE
+#define FTR_RECONSTRUCT_AS_MACRO
+
 // Inclue FFTW, and Complex to use native complex data types.
 #include <math.h>
 #include <complex.h>
@@ -38,8 +41,12 @@ ftr_set_filter(ftr_plan recon, const fftw_complex *gx, const fftw_complex *gy);
 
 // Execute the plan, acting on the arrays specified when this plan
 // was constructed.
+#ifdef FTR_RECONSTRUCT_AS_MACRO
+#define ftr_reconstruct(R) ftr_reconstruct_with_callback(R, NULL, NULL)
+#else
 void
 ftr_reconstruct(ftr_plan recon);
+#endif
 
 void
 ftr_reconstruct_with_callback(ftr_plan recon, ftr_estimate_callback callback, void * data);
@@ -50,10 +57,20 @@ ftr_destroy(ftr_plan recon);
 
 // Perform only the FTR estimation step on the transformed arrays.
 void 
-ftr_estimate(ftr_plan recon);
+ftr_apply_filter(ftr_plan recon);
+
+void
+ftr_forward_transform(ftr_plan recon);
+
+void
+ftr_backward_transform(ftr_plan recon);
+
+void
+ftr_apply_callback(ftr_plan recon, ftr_estimate_callback callback, void * data);
 
 // Utilties
-void ftr_map_half_complex(int ny, int nx, int * map, int * imap);
+void
+ftr_map_half_complex(int ny, int nx, int * map, int * imap);
 
 #endif /* end of include guard: FTR_H_D3963E38 */
 
