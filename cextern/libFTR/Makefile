@@ -7,7 +7,7 @@
 #
 
 LDFLAGS = -g -O3 -Wall -lfftw3_threads -lfftw3 -lm -lpthread -L /opt/local/lib
-CCFLAGS = -g -O3 -Wall
+CFLAGS = -g -O3 -Wall -I$(INCLUDEDIR)
 BUILDDIR = build/
 SRCDIR = src/
 LIBDIR = lib/
@@ -15,23 +15,26 @@ EXAMPLE = example/
 INCLUDEDIR = include/
 HEADERS = $(wildcard $(SRCDIR)*.h)
 INCLUDE = $(patsubst $(SRCDIR)%.h,$(INCLUDEDIR)%.h, $(HEADERS))
+
+TARGET = $(LIBDIR)libftr.so $(INCLUDE)
+OBJECTS = $(patsubst $(SRCDIR)%.c,$(BUILDDIR)%.o, $(wildcard $(SRCDIR)*.c))
+
 PROGS_C = $(wildcard $(EXAMPLE)*.c)
-PROGS = $(subst _,-, $(patsubst $(EXAMPLE)%.c,%, $(PROGS_C)))
-TARGET = $(LIBDIR)libftr.so $(INCLUDE) $(PROGS)
-OBJECTS = $(BUILDDIR)ftr.o $(BUILDDIR)slopemanage.o
+PROGS = $(subst _,-, $(patsubst $(EXAMPLE)%.c,%,$(PROGS_C)))
 
 all: $(TARGET)
+	
+tests: $(PROGS)
 
 $(BUILDDIR)%.o : $(SRCDIR)%.c $(INCLUDE)
 	@mkdir -p $(BUILDDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(EXAMPLE)%.o : $(EXAMPLE)%.c $(INCLUDE)
-	$(CC) $(CFLAGS) -I$(INCLUDEDIR) -c $< -o $@
 
 $(LIBDIR)lib%.so : $(OBJECTS)
 	@mkdir -p $(LIBDIR)
-	$(CC) $(LDFLAGS) -shared -o $@ $^
+	$(CC) $(LDFLAGS) -shared -fPIC -o $@ $^
 	
 ftr-example : $(EXAMPLE)ftr_example.o $(EXAMPLE)clock.o $(LIBDIR)libftr.so
 	$(CC) $(LDFLAGS) -L$(LIBDIR) -I$(INCLUDEDIR) -lftr -o $@ $< $(EXAMPLE)clock.o
@@ -45,16 +48,11 @@ aperture-test : $(EXAMPLE)aperture_test.o $(LIBDIR)libftr.so
 $(INCLUDEDIR)%.h : $(SRCDIR)%.h
 	@mkdir -p $(INCLUDEDIR)
 	cp $< $(INCLUDEDIR)
-	
-.PHONY: clock
-clock:
-	
 
+.PHONY: clean all
+	
 clean:
 	rm -f $(TARGET)
 	rm -rf $(LIBDIR)
 	rm -rf $(BUILDDIR)
 	rm -rf $(INCLUDEDIR)
-
-show:
-	@echo $(PROGS)
