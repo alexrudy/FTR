@@ -472,7 +472,8 @@ recon_result hybrid_reconstructor(aperture ap, int navg, int iters)
   for(i = 0; i < iters; ++i)
   {
       slope_management_execute(manage_plan, sy, sx);
-      ftr_reconstruct(plan);
+      ftr_forward_transform(plan);
+      ftr_apply_filter(plan);
       cblas_dgemv(CblasRowMajor, CblasNoTrans, na, nm, 1.0, m, nm, est, 1, 0.0, a, 1);
   }
   clock_gettime (CLOCK_REALTIME, &t_stop);
@@ -484,7 +485,8 @@ recon_result hybrid_reconstructor(aperture ap, int navg, int iters)
       clock_gettime (CLOCK_REALTIME, &t_start); 
       slope_management_execute(manage_plan, sy, sx);
       clock_gettime (CLOCK_REALTIME, &t_slopemanage); 
-      ftr_reconstruct(plan);
+      ftr_forward_transform(plan);
+      ftr_apply_filter(plan);
       clock_gettime (CLOCK_REALTIME, &t_ftr);
       cblas_dgemv(CblasRowMajor, CblasNoTrans, na, nm, 1.0, m, nm, est, 1, 0.0, a, 1);
       clock_gettime (CLOCK_REALTIME, &t_stop);
@@ -544,9 +546,9 @@ int main (int argc, char const *argv[])
     { .func = hybrid_reconstructor,   .result = NULL, .description = "FTR + VMM" },
   };
   int order[NTESTS] = { 0, 1, 2, 3};
+  srand((unsigned) time(NULL));
   shuffle(order, NTESTS);
   aperture ap;
-  srand((unsigned) time(NULL));
   
   
   // Parse Arguments.
