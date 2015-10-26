@@ -37,6 +37,42 @@ error:
   return 1;
 }
 
+ftr_halfcomplex ftr_halfcomplex_map(const int ny, const int nx)
+{
+    ftr_halfcomplex hcmap;
+    int nn, nft;
+    hcmap = calloc(1, sizeof(struct ftr_halfcomplex_s));
+    check_mem(hcmap);
+    
+    hcmap->ny = ny;
+    hcmap->nx = nx;
+    hcmap->nf = (nx / 2) + 1;
+    nn = ny * nx;
+    nft = ny * hcmap->nf;
+    
+    hcmap->f2hc = calloc(nn, sizeof(int));
+    check_mem(hcmap->f2hc);
+    hcmap->hc2f = calloc(nft, sizeof(int));
+    check_mem(hcmap->hc2f);
+    
+    ftr_map_half_complex(ny, nx, hcmap->f2hc, hcmap->hc2f);
+    return hcmap;
+    
+error:
+    ftr_halfcomplex_destroy(hcmap);
+    return NULL;
+}
+
+void ftr_halfcomplex_destroy(ftr_halfcomplex hcmap)
+{
+    if(hcmap){
+        if(hcmap->f2hc) free(hcmap->f2hc);
+        if(hcmap->hc2f) free(hcmap->hc2f);
+        free(hcmap);
+    }
+    return;
+}
+
 void ftr_map_half_complex(int ny, int nx, int * map, int * imap)
 {
   int x, y;
@@ -183,11 +219,18 @@ ftr_reconstruct_with_callback(ftr_plan recon, ftr_estimate_callback callback, vo
     ftr_apply_filter(recon);
     
     // Filtering callback for the estimate.
-    if(callback) callback(data, recon->est_ft);
+    if(callback) callback(data, recon->ny, recon->nx, recon->est_ft);
     
     // Inverse transform to compute results.
     fftw_execute(recon->p_est);
     return; 
+}
+
+void
+ftr_apply_callback(ftr_plan recon, ftr_estimate_callback callback, void * data)
+{
+    callback(data, recon->ny, recon->nx, recon->est_ft);
+    return;
 }
 
 void

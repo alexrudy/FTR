@@ -21,9 +21,14 @@
 // FTR Plans are opaque structures managed
 // by the functions below.
 typedef struct ftr_plan_s * ftr_plan;
+typedef struct ftr_halfcomplex_s * ftr_halfcomplex;
+struct ftr_halfcomplex_s {
+    int ny, nx, nf;
+    int *f2hc, *hc2f;
+};
 
 // Define the callback function.
-typedef void (*ftr_estimate_callback)(void * data, fftw_complex * est_ft);
+typedef void (*ftr_estimate_callback)(void * data, const int ny, const int nx, fftw_complex * est_ft);
 
 
 // Functions
@@ -71,6 +76,12 @@ ftr_apply_callback(ftr_plan recon, ftr_estimate_callback callback, void * data);
 // Utilties
 void
 ftr_map_half_complex(int ny, int nx, int * map, int * imap);
+
+ftr_halfcomplex
+ftr_halfcomplex_map(const int ny, const int nx);
+
+void
+ftr_halfcomplex_destroy(ftr_halfcomplex ftr_hc);
 
 #endif /* end of include guard: FTR_H_D3963E38 */
 
