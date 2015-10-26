@@ -30,7 +30,7 @@ def get_extensions():
     for component in glob.iglob(os.path.join(this_directory, '_*.pyx')):
         # Component name and full module name.
         cname = os.path.basename(component)[1:-len(".pyx")]
-        name = ".".join(this_name + ["_{}".format(cname)])
+        name = ".".join(this_name + ["_{0:s}".format(cname)])
         extension_args['sources'] = [component]
         
         # Library checks.
