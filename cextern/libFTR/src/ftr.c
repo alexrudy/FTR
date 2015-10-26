@@ -109,8 +109,7 @@ void ftr_map_half_complex(int ny, int nx, int * map, int * imap)
 }
 
 ftr_plan ftr_plan_reconstructor(int ny, int nx, double *sx, double *sy, double *est) {
-  size_t i;
-  int x, y, io, nfo;
+  int nfo;
   ftr_plan recon;
   recon = calloc(1, sizeof(struct ftr_plan_s));
   check_mem(recon);
@@ -176,7 +175,6 @@ void
 ftr_set_filter(ftr_plan recon, const fftw_complex *gx, const fftw_complex *gy) {
   
   size_t i;
-  int x, y;
   double denom;
   memcpy(recon->gx_ft, gx, sizeof(fftw_complex) * recon->nn);
   memcpy(recon->gy_ft, gy, sizeof(fftw_complex) * recon->nn);
@@ -240,8 +238,7 @@ ftr_backward_transform(ftr_plan recon)
 }
 
 void ftr_apply_filter(ftr_plan recon) {
-  size_t i, j;
-  int x, y;
+  size_t i;
   for(i = 0; i < recon->nft; ++i)
   {
       recon->est_ft[i] = (conj(recon->gx_ft[recon->ifs[i]]) * recon->sx_ft[i]
