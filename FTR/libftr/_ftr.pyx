@@ -5,6 +5,8 @@ Cython wrappers for the C implementation of the Fourier Transform Reconstructor.
 import numpy as np
 cimport numpy as np
 
+include "_ftr.pxd"
+
 from ..utils import shapestr
 
 #Need to ensure that we've initialized the numpy c-API.
@@ -110,13 +112,13 @@ cdef class HalfComplexMapping:
             cdef np.npy_intp shape[2]
             shape[0] = <np.npy_intp> self._shape[0]
             shape[1] = <np.npy_intp> self._shape[1]
-            return np.PyArray_SimpleNewFromData(1, shape, np.NPY_INT, self._hcmap.f2hc)
+            return np.PyArray_SimpleNewFromData(1, shape, np.NPY_INT, <void*>self._hcmap.f2hc)
     
     property halfcomplex_to_full:
         def __get__(self):
             cdef np.npy_intp shape[2]
             shape[0] = <np.npy_intp> self._shape[0]
-            shape[1] = <np.npy_intp> self._hcmap.nf[1]
-            return np.PyArray_SimpleNewFromData(1, shape, np.NPY_INT, self._hcmap.hc2f)
+            shape[1] = <np.npy_intp> self._hcmap.nf
+            return np.PyArray_SimpleNewFromData(1, shape, np.NPY_INT, <void*>self._hcmap.hc2f)
             
     
