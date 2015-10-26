@@ -54,7 +54,20 @@ lqg_filter lqg_new_filter(const int nl, const int ny, const int nx,
     ftr_map_half_complex(ny, nx, filter->ift, filter->ifs);
     
 error:
+    lqg_destroy(filter);
     return NULL;
+}
+
+void lqg_destroy(lqg_filter filter)
+{
+    if(filter){
+        if(filter->ift) free(filter->ift);
+        if(filter->ifs) free(filter->ifs);
+        if(filter->holder) free(filter->holder);
+        if(filter->past) free(filter->past);
+        if(filter->end) free(filter->end);
+    }
+    return;
 }
 
 void lqg_reset(lqg_filter filter)
