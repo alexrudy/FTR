@@ -44,3 +44,6 @@ def get_extensions():
         extensions.append(extension)
     
     return extensions
+    
+def get_external_libraries():
+    return ['ftr']
