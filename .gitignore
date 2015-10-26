@@ -56,3 +56,6 @@ distribute-*.tar.gz
 # Ignore IDL code, because we aren't sure if we can publish it.
 # (in fact, probably can't!)
 idlftr/*
+
+#py.test cache
+.cache/*
