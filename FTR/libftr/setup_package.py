@@ -1,43 +1,46 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import sys
 import os
+import glob
 from distutils.core import Extension
-
+from astropy_helpers import setup_helpers
 
 def get_extensions():
     """Return appropriate cython extensions"""
+    # Some basic constants
+    library_name = "libFTR"
     
-    ftr_library_name = "libFTR"
+    this_directory = os.path.dirname(__file__)
+    this_name = __name__.split(".")[:-1]
     
-    # Get include directory relative to setup.py
-    ftr_include = os.path.abspath(os.path.join('cextern',ftr_library_name,'src'))
-    ftr_library = os.path.abspath(os.path.join('cextern',ftr_library_name))
-    local_dir = os.path.dirname(__file__)
-    local_name = ".".join(["FTR", os.path.basename(os.path.dirname(__file__)), "_ftr"])
+    root_directory = os.path.dirname(os.path.abspath(sys.argv[0]))
+    include_directory = os.path.join(root_directory, 'cextern', library_name, 'src')
     
-    # Set up sources.
-    sources = [os.path.join(local_dir,"_ftr.pyx")]
-    sources.extend([ os.path.join(ftr_include, filename) for filename in os.listdir(ftr_include) if filename.endswith(".c") ])
-    
-    # Set up libraries
     libraries = ['fftw3', 'fftw3_threads', 'pthread']
     
-    _ftr = Extension(
-        local_name, sources, include_dirs=['numpy', ftr_include], libraries=libraries
-    )
+    extension_args = {
+        'include_dirs' : ['numpy', include_directory ],
+        'libraries' : libraries,
+        'sources' : []
+    }
     
-    local_name = ".".join(["FTR", os.path.basename(os.path.dirname(__file__)), "_slopemanage"])
+    extensions = []
     
-    # Set up sources.
-    sources = [os.path.join(local_dir,"_slopemanage.pyx")]
-    sources.extend([ os.path.join(ftr_include, filename) for filename in os.listdir(ftr_include) if filename.endswith(".c") ])
+    for component in glob.iglob(os.path.join(this_directory, '_*.pyx')):
+        # Component name and full module name.
+        cname = os.path.basename(component)[1:-len(".pyx")]
+        name = ".".join(this_name + ["_{}".format(cname)])
+        extension_args['sources'] = [component]
+        
+        # Library checks.
+        if setup_helpers.use_system_library('ftr'):
+            libraries.append('ftr')
+        else:
+            extension_args['sources'].extend(glob.glob(os.path.join(include_directory, "*" + cname + "*.c")))
+        
+        # Extension object.
+        extension = Extension(name, **extension_args)
+        extensions.append(extension)
     
-    _slopemanage = Extension(
-        local_name, sources, include_dirs=['numpy', ftr_include], libraries=libraries
-    )
-    
-    # Cython _ftr extension
-    ext_modules = [
-        _ftr, _slopemanage
-    ]
-    return ext_modules
+    return extensions
