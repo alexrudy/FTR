@@ -39,19 +39,16 @@ cdef class SlopeManager:
     
     cdef sm_plan _plan
     cdef tuple _shape
+    cdef np.ndarray _ap
     
     def __cinit__(self, ap):
         """C initialization step for this function."""
         shape = np.asarray(ap).shape
         self._shape = shape
+        self._ap = ap
         
         # Create the plan, which internally allocates the necessary memory.
         self._plan = slope_management_plan(shape[0], shape[1], <int *>np.PyArray_DATA(ap.astype(np.int32)))
-        
-    def __init__(self, ap):
-        """Python initialization."""
-        super(SlopeManager, self).__init__()
-        self._ap = ap
         
     @property
     def aperture(self):
