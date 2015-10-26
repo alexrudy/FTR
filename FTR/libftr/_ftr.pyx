@@ -7,28 +7,6 @@ cimport numpy as np
 
 from ..utils import shapestr
 
-cdef extern from "complex.h":
-    pass
-    
-cdef extern from "fftw3.h":
-    pass
-
-# Import declarations from the FTR header files.
-cdef extern from "ftr.h":
-    
-    # Leave the FTR plan as opaque to the user for now
-    # We might have to change this in the future to support
-    # things like fourier-space gains etc.
-    cdef struct FTR_plan:
-        pass
-    ctypedef FTR_plan ftr_plan
-    
-    # These four methods create the functional interface to FTR in c.
-    ftr_plan ftr_plan_reconstructor(int nx, int ny, double *sx, double *sy, double *est)
-    void ftr_set_filter(ftr_plan recon, complex *gx, complex *gy)
-    void ftr_reconstruct(ftr_plan recon)
-    void ftr_destroy(ftr_plan recon)
-    
 #Need to ensure that we've initialized the numpy c-API.
 np.import_array()
 
@@ -113,4 +91,32 @@ cdef class CFTRBase:
             self.update_filters()
             
         
+    
+
+cdef class HalfComplexMapping:
+    
+    cdef ftr_halfcomplex _hcmap
+    cdef tuple _shape
+    
+    def __cinit__(self, shape):
+        self._shape = tuple(shape)
+        self._hcmap = ftr_halfcomplex_map(self._shape[0], self._shape[1])
+        
+    def __dealloc__(self):
+        ftr_halfcomplex_destroy(self._hcmap)
+        
+    property full_to_halfcomplex:
+        def __get__(self):
+            cdef np.npy_intp shape[2]
+            shape[0] = <np.npy_intp> self._shape[0]
+            shape[1] = <np.npy_intp> self._shape[1]
+            return np.PyArray_SimpleNewFromData(1, shape, np.NPY_INT, self._hcmap.f2hc)
+    
+    property halfcomplex_to_full:
+        def __get__(self):
+            cdef np.npy_intp shape[2]
+            shape[0] = <np.npy_intp> self._shape[0]
+            shape[1] = <np.npy_intp> self._hcmap.nf[1]
+            return np.PyArray_SimpleNewFromData(1, shape, np.NPY_INT, self._hcmap.hc2f)
+            
     
