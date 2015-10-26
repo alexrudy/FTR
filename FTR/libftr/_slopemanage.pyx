@@ -48,6 +48,15 @@ cdef class SlopeManager:
         # Create the plan, which internally allocates the necessary memory.
         self._plan = slope_management_plan(shape[0], shape[1], <int *>np.PyArray_DATA(ap.astype(np.int32)))
         
+    def __init__(self, ap):
+        """Python initialization."""
+        super(SlopeManager, self).__init__()
+        self._ap = ap
+        
+    @property
+    def aperture(self):
+        return self._ap
+        
     def __dealloc__(self):
         slope_management_destroy(self._plan)
         
