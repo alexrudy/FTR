@@ -210,3 +210,39 @@ def fill_hermitian_fft(array):
     array_shifted = np.fft.fftshift(np.asarray(array, dtype=np.complex))
     array_hermitian = make_hermitian(array_shifted)
     return np.fft.ifftshift(array_hermitian.view(np.ndarray))
+    
+def _prepare_arrays(input_data, output_shape):
+    """Prepare input and output arrays."""
+    input_data  = np.asarray(input_data)
+    input_shape = input_data.shape
+    output_data = np.empty(output_shape, dtype=input_data.dtype)
+    
+    # Total number of elements in each type of array.
+    nft = np.prod(input_shape)
+    nn  = np.prod(output_shape)
+    
+    # Extract single dimension parameters, where relevant.
+    ny = output_shape[0]
+    nf = input_shape[-1]
+    nx = output_shape[-1]
+    if ny != input_shape[0]:
+        raise ValueError("Shape mismatch: ({}x ) -> ({}x )".format(input_shape[0], ny))
+    if (nx // 2) + 1 != nf:
+        raise ValueError("Shape mismatch: ( x{}) -> ( x{}), expected ( x{})".format(nf, nx, (nx // 2) + 1))
+    return output_data
+    
+def unpack_halfcomplex(input_data, output_shape):
+    """Unpack a halfcomplex array into a given output shape."""
+    input_data  = np.asarray(input_data)
+    output_data = _prepare_arrays(input_data, output_shape)
+    input_shape = input_data.shape
+    
+    # Extract single dimension parameters, where relevant.
+    ny = output_shape[0]
+    nf = input_shape[-1]
+    nx = output_shape[-1]
+    o = 1 if nx % 2 == 1 else 2
+    output_data[ :  , 0:nf] = input_data
+    output_data[0   ,nf:nx] = np.conj(input_data[0,nf-o:0:-1])
+    output_data[1:ny,nf:nx] = np.conj(input_data[ny-1:0:-1,nf-o:0:-1])
+    return output_data

@@ -121,4 +121,29 @@ cdef class HalfComplexMapping:
             shape[1] = <np.npy_intp> self._hcmap.nf
             return np.PyArray_SimpleNewFromData(1, shape, np.NPY_INT, <void*>self._hcmap.hc2f)
             
+    property conjugate:
+        def __get__(self):
+            should_conj = np.ones(self._shape, dtype=np.bool)
+            should_conj.flat[self.full_to_halfcomplex] = False
+            return should_conj
+            
+        
+    property shape:
+        def __get__(self):
+            return self._shape
     
+    def unpack(self, halfcomplex_data, full_shape):
+        halfcomplex_data = np.asarray(halfcomplex_data)
+        full_data = np.empty(full_shape, dtype=halfcomplex_data.dtype)
+        full_data.flat[:] = np.conj(halfcomplex_data.flat[self.full_to_halfcomplex])
+        full_data.flat[self.halfcomplex_to_full] = halfcomplex_data.flat[:]
+        return full_data
+        
+    def pack(self, full_data):
+        full_data = np.asarray(full_data)
+        halfcomplex_shape = list(full_data.shape)
+        halfcomplex_shape[1] = (full_data.shape[1] // 2) + 1
+        halfcomplex_data = np.empty(halfcomplex_shape, dtype=full_data.dtype)
+        halfcomplex_data.flat[:] = full_data.flat[self.halfcomplex_to_full]
+        return halfcomplex_data
+        

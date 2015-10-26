@@ -30,7 +30,8 @@ cdef extern from "ftr.h":
     # These are the half-complex mapping tools.
     cdef struct ftr_halfcomplex_s:
         int ny, nx, nf
-        int *f2hc, *hc2f
+        int *f2hc
+        int *hc2f
     ctypedef ftr_halfcomplex_s *ftr_halfcomplex
     
     ftr_halfcomplex ftr_halfcomplex_map(const int ny, const int nx)
