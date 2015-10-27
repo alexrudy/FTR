@@ -36,14 +36,14 @@ $(LIBDIR)lib%.so : $(OBJECTS)
 	@mkdir -p $(LIBDIR)
 	$(CC) $(LDFLAGS) -shared -fPIC -o $@ $^
 	
-ftr-example : $(EXAMPLE)ftr_example.o $(EXAMPLE)clock.o $(LIBDIR)libftr.so
-	$(CC) $(LDFLAGS) -L$(LIBDIR) -I$(INCLUDEDIR) -lftr -o $@ $< $(EXAMPLE)clock.o
+ftr-example : $(EXAMPLE)ftr_example.o $(LIBDIR)libftr.so
+	$(CC) $(LDFLAGS) -L$(LIBDIR) -I$(INCLUDEDIR) -lftr -o $@ $<
 
-recon-timing : $(EXAMPLE)recon_timing.o $(EXAMPLE)clock.o $(LIBDIR)libftr.so
-	$(CC) $(LDFLAGS) -L$(LIBDIR) -I$(INCLUDEDIR) -lftr -lopenblas -o $@ $< $(EXAMPLE)clock.o
+recon-timing : $(EXAMPLE)recon_timing.o $(LIBDIR)libftr.so
+	$(CC) $(LDFLAGS) -L$(LIBDIR) -I$(INCLUDEDIR) -lftr -lopenblas -o $@ $<
 
 aperture-test : $(EXAMPLE)aperture_test.o $(LIBDIR)libftr.so
-	$(CC) $(LDFLAGS) -L$(LIBDIR) -I$(INCLUDEDIR) -lftr -lopenblas -o $@ $<
+	$(CC) $(LDFLAGS) -L$(LIBDIR) -I$(INCLUDEDIR) -lftr -o $@ $<
 
 $(INCLUDEDIR)%.h : $(SRCDIR)%.h
 	@mkdir -p $(INCLUDEDIR)
