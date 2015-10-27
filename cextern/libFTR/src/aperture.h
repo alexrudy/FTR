@@ -60,7 +60,7 @@ Returns the number of illuminated subapertures.
 */
 aperture aperture_create_with_radii(const int ny, const int nx, const double outer_radius, const double inner_radius)
 {
-  int i, j, t = 0;
+  int i, j;
   double x, y;
   double radius;
   aperture ap = NULL;
