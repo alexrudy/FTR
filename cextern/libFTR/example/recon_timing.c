@@ -3,6 +3,7 @@
 #include "clock.h"
 #include "dbg.h"
 #include "aperture.h"
+#include "ShaneAO_aperture.h"
 // #include <cblas.h>
 #include <cblas_openblas.h>
 #include <openblas_config.h>
@@ -16,28 +17,6 @@
 #define ffree(N) if(N) fftw_free(N)
 
 #define MAX_STR_LEN 80
-#define NACTUATORS 1024 + 52
-#define NCOEFF 14
-
-/* Function to create apertures that are appropriately sized.
-Figured this out by trial and error. Had to special case 8.
-Might also have to special case 30, but I'm not sure, becasue
-Don's documents don't line up with Sri's subaperture extraction.
-(Especially w/r/t partially illuminated subapertures).
-*/
-aperture ShaneAO_aperture(const int ng, const int nacross)
-{
-  double outer, inner;
-  switch (nacross) {
-  case 8:
-    outer = 3.6;
-    break;
-  default:
-    outer = ((double)nacross / 2.0) - 1.0;
-  }
-  inner = 0.3 * outer;
-  return aperture_create_with_radii(ng, ng, outer, inner);
-}
 
 ///////////////
 // Result types
@@ -321,7 +300,8 @@ recon_result dual_vmm_reconstructor(aperture ap, int navg, int iters)
   int nn = ap->nx * ap->ny;
   int na = NACTUATORS + NCOEFF;
   int ns = 2 * ap->ni;
-  int nm = (ap->nx / 2 + 1) * ap->ny + NCOEFF;
+  // int nm = (ap->nx / 2 + 1) * ap->ny + NCOEFF;
+  int nm = ap->nm + NCOEFF;
   struct timespec t_start, t_first, t_stop;
   double recon_avg = 0.0, apply_avg = 0.0, total = 0.0;
   int i;
@@ -407,7 +387,8 @@ recon_result hybrid_reconstructor(aperture ap, int navg, int iters)
   int i;
   int ns = 2*ap->ni;
   int na = NACTUATORS + NCOEFF;
-  int nm = (ap->nx / 2 + 1) * ap->ny + NCOEFF;
+  // int nm = (ap->nx / 2 + 1) * ap->ny + NCOEFF;
+  int nm = ap->nm + NCOEFF;
   
   recon_result result;
   recon_result_part sm, ftr, vma;
