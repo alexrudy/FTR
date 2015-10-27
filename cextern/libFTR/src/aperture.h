@@ -21,6 +21,7 @@ typedef struct aperture_s * aperture;
 
 struct aperture_s {
   int nx, ny; // Dimensions of the aperture.
+  int nm; // Number of modes.
   int * ap; // Pointer to the aperture array.
   int ni; // Number of illuminated subapertures.
 };
