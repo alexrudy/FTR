@@ -4,9 +4,12 @@
 #include "dbg.h"
 #include "aperture.h"
 #include "ShaneAO_apertures.h"
-// #include <cblas.h>
+#ifdef MACPORTS_OPENBLAS
 #include <cblas_openblas.h>
 #include <openblas_config.h>
+#else
+#include <cblas.h>
+#endif
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
