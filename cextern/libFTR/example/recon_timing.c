@@ -3,7 +3,7 @@
 #include "clock.h"
 #include "dbg.h"
 #include "aperture.h"
-#include "ShaneAO_aperture.h"
+#include "ShaneAO_apertures.h"
 // #include <cblas.h>
 #include <cblas_openblas.h>
 #include <openblas_config.h>
