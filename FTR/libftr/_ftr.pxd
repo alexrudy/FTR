@@ -36,3 +36,5 @@ cdef extern from "ftr.h":
     
     ftr_halfcomplex ftr_halfcomplex_map(const int ny, const int nx)
     void ftr_halfcomplex_destroy(ftr_halfcomplex ftr_hc)
+    
+
