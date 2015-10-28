@@ -6,6 +6,7 @@ from __future__ import absolute_import
 import sys
 import os
 import glob
+import copy
 from distutils.core import Extension
 from astropy_helpers import setup_helpers
 
@@ -42,21 +43,22 @@ def get_libFTR_extensions(filename, modulename, pattern="*.pyx", **kwargs):
     
     for component in glob.iglob(os.path.join(this_directory, pattern)):
         # Component name and full module name.
+        this_extension_args = copy.deepcopy(extension_args)
         cname = os.path.splitext(os.path.basename(component))[0]
         if cname.startswith("_"):
             cname = cname[1:]
             name = ".".join(this_name + ["_{0:s}".format(cname)])
         else:
             name = ".".join(this_name + [cname])
-        extension_args['sources'].append(component)
+        this_extension_args['sources'].append(component)
         
         # Library checks.
         if setup_helpers.use_system_library('ftr'):
-            libraries.append('ftr')
+            this_extension_args['libraries'].append('ftr')
         else:
-            extension_args['sources'].extend(glob.glob(os.path.join(include_directory, "*" + cname + "*.c")))
+            this_extension_args['sources'].extend(glob.glob(os.path.join(include_directory, "*" + cname + "*.c")))
         # Extension object.
-        extension = Extension(name, **extension_args)
+        extension = Extension(name, **this_extension_args)
         extensions.append(extension)
     
     return extensions
