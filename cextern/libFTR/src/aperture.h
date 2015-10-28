@@ -19,7 +19,7 @@ Tools for making apertures.
 // Structures for apertures.
 typedef struct aperture_s * aperture;
 
-struct aperture_s {
+typedef struct aperture_s {
   int nx, ny; // Dimensions of the aperture.
   int nm; // Number of modes.
   int * ap; // Pointer to the aperture array.
@@ -29,8 +29,9 @@ struct aperture_s {
 /*
 Function Prototypes
 */
-aperture aperture_create(const int ny, const int nx);
+aperture aperture_create_default(const int ny, const int nx);
 aperture aperture_create_with_radii(const int ny, const int nx, const double outer_radius, const double inner_radius);
+aperture aperture_create(const int ny, const int nx, const int *ap);
 void aperture_print(const aperture ap);
 void aperture_destroy(aperture ap);
 
@@ -47,10 +48,11 @@ Make a standard circular aperture with 1px padding around the edges
 and no central obscuration.
 Returns the aperture structure.
 */
-aperture aperture_create(const int ny, const int nx)
+aperture aperture_create_default(const int ny, const int nx)
 {
-    double outer_radius = ((double)nx / 2.0) - 1.0;
-    double inner_radius = 0.0;
+    int n = nx > ny ? ny : nx;
+    double outer_radius = ((double)n / 2.0) - 1.0;
+    double inner_radius = outer_radius < 6 ? 0.0 : (outer_radius / 3.0);
     return aperture_create_with_radii(ny, nx, outer_radius, inner_radius);
 }
 
@@ -60,18 +62,13 @@ Returns the number of illuminated subapertures.
 */
 aperture aperture_create_with_radii(const int ny, const int nx, const double outer_radius, const double inner_radius)
 {
-  int i, j;
+  int i, j, *apid=NULL;
   double x, y;
   double radius;
-  aperture ap = NULL;
-  ap = malloc(sizeof(struct aperture_s));
-  check_mem(ap);
+  aperture ap=NULL;
   
-  ap->nx = nx;
-  ap->ny = ny;
-  ap->ni = 0;
-  ap->ap = malloc(sizeof(int) * nx * ny);
-  check_mem(ap->ap);
+  apid = malloc(sizeof(int) * nx * ny);
+  check_mem(apid);
   
   for(i = 0; i < nx; ++i)
   {
@@ -81,16 +78,39 @@ aperture aperture_create_with_radii(const int ny, const int nx, const double out
           y = j - ((double)ny / 2.0) + 0.5;
           radius = sqrt((x * x) + (y * y));
           if(radius < outer_radius && radius >= inner_radius) {
-              ap->ap[(i * nx) + j] = 1;
+              apid[(i * nx) + j] = 1;
           }else{
-              ap->ap[(i * nx) + j] = 0;
+              apid[(i * nx) + j] = 0;
           }
-          ap->ni += ap->ap[(i * nx) + j];
       }
   }
-  return ap;
+  ap = aperture_create(ny, nx, apid);
 error:
-  aperture_destroy(ap);
+  if(apid) free(apid);
+  return ap;
+}
+
+aperture aperture_create(const int ny, const int nx, const int *ap)
+{
+  size_t i;
+  aperture _ap = NULL;
+  _ap = malloc(sizeof(struct aperture_s));
+  check_mem(_ap);
+  
+  _ap->nx = nx;
+  _ap->ny = ny;
+  _ap->ni = 0;
+  _ap->ap = malloc(sizeof(int) * nx * ny);
+  check_mem(_ap->ap);
+  memcpy(_ap->ap, ap, sizeof(int) * nx * ny);
+  for(i = 0; i < (nx * ny); ++i)
+  {
+    check(_ap->ap[i] == 0 || _ap->ap[i] == 1, "Aperture arrays must be 1 or 0")
+    _ap->ni += _ap->ap[i];
+  }
+  return _ap;
+error:
+  aperture_destroy(_ap);
   return NULL;
 }
 
