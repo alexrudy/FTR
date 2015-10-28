@@ -11,20 +11,24 @@ from astropy_helpers import setup_helpers
 
 __all__ = ['get_external_libraries', 'get_libFTR_extensions']
 
+library_name = "libFTR"
+
 def get_external_libraries():
     return ['ftr']
+    
+def get_libFTR_include_directory():
+    """Get libFTR include directory."""
+    root_directory = os.path.dirname(os.path.abspath(sys.argv[0]))
+    include_directory = os.path.join(root_directory, 'cextern', library_name, 'src')
+    return include_directory
 
-def get_libFTR_extensions(filename, modulename, pattern="*.pyx"):
+def get_libFTR_extensions(filename, modulename, pattern="*.pyx", **kwargs):
     """docstring for get_libFTR_extensions"""
-    pass
-    library_name = "libFTR"
     
     this_directory = os.path.dirname(filename)
     this_name = modulename.split(".")[:-1]
     
-    root_directory = os.path.dirname(os.path.abspath(sys.argv[0]))
-    include_directory = os.path.join(root_directory, 'cextern', library_name, 'src')
-    
+    include_directory = get_libFTR_include_directory()
     libraries = ['fftw3', 'fftw3_threads', 'pthread']
     
     extension_args = {
@@ -32,6 +36,7 @@ def get_libFTR_extensions(filename, modulename, pattern="*.pyx"):
         'libraries' : libraries,
         'sources' : []
     }
+    extension_args.update(kwargs)
     
     extensions = []
     
