@@ -50,14 +50,14 @@ Creating apertures
     :param const int ny: Number of points in the Y direction.
     :param const int nx: Number of points in the X direction.
     :param const int* ap: Aperture array.
-    :returns :type:`aperture` ap: A pointer to an aperture structure.
-
+    :param aperture ap: Aperture object.
+    
 
 .. function:: void aperture_destroy(aperture ap)
     
     Destroy and deallocate aperture arrays.
     
-    :param :type:`aperture` ap: Aperture object to deallocate.
+    :param aperture ap: Aperture object to deallocate.
     
 
 .. function:: aperture aperture_create_default(const int ny, const int nx)
@@ -67,7 +67,7 @@ Creating apertures
     
     :param const int ny: Number of points in the Y direction.
     :param const int nx: Number of points in the X direction.
-    :returns :type:`aperture` ap: A pointer to an aperture structure.
+    :param aperture ap: Aperture object.
     
 
 .. function:: aperture aperture_create_with_radii(const int ny, const int nx, const double outer_radius, const double inner_radius)
@@ -78,7 +78,7 @@ Creating apertures
     :param const int nx: Number of points in the X direction.
     :param const double outer_radius: The outer radius of the annulus.
     :param const double inner_radius: The inner radius of the annulus.
-    :returns :type:`aperture` ap: A pointer to an aperture structure.
+    :param aperture ap: Aperture object.
 
 Viewing apertures
 -----------------
@@ -87,7 +87,7 @@ Viewing apertures
     
     Print the aperture mask to stdout.
     
-    :param :type:`aperture` ap: Aperture to print.
+    :param aperture ap: Aperture to print.
     
     
 
