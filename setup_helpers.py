@@ -48,7 +48,7 @@ def get_libFTR_extensions(filename, modulename, pattern="*.pyx", **kwargs):
             name = ".".join(this_name + ["_{0:s}".format(cname)])
         else:
             name = ".".join(this_name + [cname])
-        extension_args['sources'] = [component]
+        extension_args['sources'].append(component)
         
         # Library checks.
         if setup_helpers.use_system_library('ftr'):
