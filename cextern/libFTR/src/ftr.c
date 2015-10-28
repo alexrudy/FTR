@@ -78,12 +78,14 @@ void ftr_map_half_complex(int ny, int nx, int * map, int * imap)
   int x, y;
   int nn, nf, nft;
   int i_full, i_half;
+  int offset;
   size_t i;
   
   // Compute dimensions.
   nn = nx * ny;
   nf = (nx / 2) + 1;
   nft = nf * ny;
+  offset = nx % 2 == 0 ? 1 : 0;
   
   for(i = 0; i < nft; ++i)
   {
@@ -95,12 +97,12 @@ void ftr_map_half_complex(int ny, int nx, int * map, int * imap)
     
     map[i_full] = i_half;
     imap[i_half] = i_full;
-    if(y == 0 && x > 0 && x < nf - 1)
+    if(y == 0 && x > 0 && x < nf - offset)
     {
       i_full = (nx - x);
       map[i_full] = i_half;
     }
-    if(y > 0 && x > 0 && x < nf - 1)
+    if(y > 0 && x > 0 && x < nf - offset)
     {
       i_full = (nx - x) + ((ny - y) * nx);
       map[i_full] = i_half;

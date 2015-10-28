@@ -37,7 +37,6 @@ $(LIBDIR)lib%.so: $(OBJECTS)
 	@mkdir -p $(LIBDIR)
 	$(CC) $(LIBFLAGS) -o $@ $^
 
-
 ftr-example: LDFLAGS += -L$(LIBDIR) -I$(INCLUDEDIR) -lftr
 ftr-example: $(EXAMPLE)ftr_example.o $(LIBDIR)libftr.so
 	$(CC) $(LDFLAGS) -o $@ $<

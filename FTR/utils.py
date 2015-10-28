@@ -210,3 +210,5 @@ def fill_hermitian_fft(array):
     array_shifted = np.fft.fftshift(np.asarray(array, dtype=np.complex))
     array_hermitian = make_hermitian(array_shifted)
     return np.fft.ifftshift(array_hermitian.view(np.ndarray))
+    
+

@@ -6,4 +6,4 @@ Documentation
   :maxdepth: 2
 
   FTR/index.rst
-  libftr.rst
+  libFTR/index.rst
