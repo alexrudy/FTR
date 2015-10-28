@@ -246,3 +246,10 @@ def unpack_halfcomplex(input_data, output_shape):
     output_data[0   ,nf:nx] = np.conj(input_data[0,nf-o:0:-1])
     output_data[1:ny,nf:nx] = np.conj(input_data[ny-1:0:-1,nf-o:0:-1])
     return output_data
+
+def pack_halfcomplex(input_data):
+    """Pack halfcomplex data from full data."""
+    ny = input_data.shape[0]
+    nx = input_data.shape[1]
+    nf = (nx // 2) + 1
+    return input_data[:,:nf].copy()
