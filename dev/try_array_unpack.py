@@ -83,10 +83,11 @@ def unpack_array_c(input_data, output_shape):
         
         # re-map onto the wider grid.
         io = (y * nx) + x
-        output_data.flat[io] = input_data.flat[i]
+        ii = (y * nf) + x
+        output_data.flat[io] = input_data.flat[ii]
         
         # Check our indexing math with numpy's version.
-        assert np.allclose([y,x], np.unravel_index(i, input_shape))
+        assert np.allclose([y,x], np.unravel_index(ii, input_shape))
         assert np.allclose([io], np.ravel_multi_index([y, x], output_shape))
         
         # If we are at y=0, flip around center.
@@ -100,7 +101,7 @@ def unpack_array_c(input_data, output_shape):
             assert np.allclose([yo, xo], np.unravel_index(io, output_shape))
             
             # Insert data.
-            output_data.flat[io] = np.conj(input_data.flat[i])
+            output_data.flat[io] = np.conj(input_data.flat[ii])
             
         # If we are beyond y=0, flip in both axes.
         if y > 0 and 0 < x < nfo:
@@ -113,7 +114,7 @@ def unpack_array_c(input_data, output_shape):
             assert np.allclose([yo, xo], np.unravel_index(io, output_shape))
             
             # Insert data.
-            output_data.flat[io] = np.conj(input_data.flat[i])
+            output_data.flat[io] = np.conj(input_data.flat[ii])
     
     return output_data
     
