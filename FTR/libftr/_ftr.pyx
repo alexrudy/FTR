@@ -112,14 +112,14 @@ cdef class HalfComplexMapping:
             cdef np.npy_intp shape[2]
             shape[0] = <np.npy_intp> self._shape[0]
             shape[1] = <np.npy_intp> self._shape[1]
-            return np.PyArray_SimpleNewFromData(1, shape, np.NPY_INT, <void*>self._hcmap.f2hc)
+            return np.PyArray_SimpleNewFromData(2, shape, np.NPY_INT, <void*>self._hcmap.f2hc)
     
     property halfcomplex_to_full:
         def __get__(self):
             cdef np.npy_intp shape[2]
             shape[0] = <np.npy_intp> self._shape[0]
             shape[1] = <np.npy_intp> self._hcmap.nf
-            return np.PyArray_SimpleNewFromData(1, shape, np.NPY_INT, <void*>self._hcmap.hc2f)
+            return np.PyArray_SimpleNewFromData(2, shape, np.NPY_INT, <void*>self._hcmap.hc2f)
             
     property conjugate:
         def __get__(self):
@@ -135,15 +135,17 @@ cdef class HalfComplexMapping:
     def unpack(self, halfcomplex_data, full_shape):
         halfcomplex_data = np.asarray(halfcomplex_data)
         full_data = np.empty(full_shape, dtype=halfcomplex_data.dtype)
-        full_data.flat[:] = np.conj(halfcomplex_data.flat[self.full_to_halfcomplex])
+        full_data.flat[:] = np.conj(halfcomplex_data.flat[self.full_to_halfcomplex.flat[:]])
         full_data.flat[self.halfcomplex_to_full] = halfcomplex_data.flat[:]
         return full_data
         
     def pack(self, full_data):
         full_data = np.asarray(full_data)
+        if full_data.shape != self.shape:
+            raise ValueError("Shape mismatch between mapping {!r} and data {!r}".format(self.shape, full_data.shape))
         halfcomplex_shape = list(full_data.shape)
         halfcomplex_shape[1] = (full_data.shape[1] // 2) + 1
         halfcomplex_data = np.empty(halfcomplex_shape, dtype=full_data.dtype)
-        halfcomplex_data.flat[:] = full_data.flat[self.halfcomplex_to_full]
+        halfcomplex_data.flat[...] = full_data.flat[self.halfcomplex_to_full.flat[:]]
         return halfcomplex_data
         
