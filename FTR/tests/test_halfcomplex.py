@@ -5,8 +5,7 @@ import pytest
 import random
 import copy
 
-from ..libftr._ftr import HalfComplexMapping
-from ..utils import unpack_halfcomplex, pack_halfcomplex
+from ..halfcomplex import HalfComplexMapping, unpack_halfcomplex, pack_halfcomplex
 
 
 @pytest.fixture(params=[(0, 0), (0, 3), (3, 1)])
