@@ -16,6 +16,9 @@ These slopes are both periodic on the full fourier grid, and can be reconstructe
 
 .. plot::
 
+    import matplotlib
+    matplotlib.rcParams['text.usetex'] = True
+    
     import numpy as np
     import matplotlib.pyplot as plt
 
@@ -37,7 +40,10 @@ Reconstructing these slopes with the Fourier Transform Reconstructor is quite ea
 
 
 .. plot::
-
+    
+    import matplotlib
+    matplotlib.rcParams['text.usetex'] = True
+    
     import numpy as np
     import matplotlib.pyplot as plt
     from FTR import FourierTransformReconstructor as FTRecon
@@ -63,7 +69,10 @@ First, let's set up a circular aperture for our telescope. We'll skip any centra
 
 
 .. plot::
-
+    
+    import matplotlib
+    matplotlib.rcParams['text.usetex'] = True
+    
     import matplotlib.pyplot as plt
     from FTR.utils import circle_aperture
 
@@ -79,7 +88,10 @@ We can naievely use the pure Fourier Transform Reconstructor on apertured slopes
 
 
 .. plot::
-
+    
+    import matplotlib
+    matplotlib.rcParams['text.usetex'] = True
+    
     import numpy as np
     import matplotlib.pyplot as plt
     from FTR import FourierTransformReconstructor as FTRecon
@@ -122,6 +134,9 @@ Using a the slope-managed reconstructor, we get a much better reconstruction::
 
 .. plot:: 
     
+    import matplotlib
+    matplotlib.rcParams['text.usetex'] = True
+    
     import numpy as np
     import matplotlib.pyplot as plt
     from FTR import FourierTransformReconstructor as FTRecon
@@ -145,6 +160,9 @@ Using a the slope-managed reconstructor, we get a much better reconstruction::
 The residuals from this reconstruction are much improved.
 
 .. plot::
+    
+    import matplotlib
+    matplotlib.rcParams['text.usetex'] = True
     
     import numpy as np
     import matplotlib.pyplot as plt
