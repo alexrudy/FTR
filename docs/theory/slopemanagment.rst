@@ -15,9 +15,6 @@ Lets provide some example slopes on a fully periodic domain to work with.::
 These slopes are both periodic on the full fourier grid, and can be reconstructed with a pure Fourier Transform Reconstructor.
 
 .. plot::
-
-    import matplotlib
-    matplotlib.rcParams['text.usetex'] = True
     
     import numpy as np
     import matplotlib.pyplot as plt
@@ -40,9 +37,6 @@ Reconstructing these slopes with the Fourier Transform Reconstructor is quite ea
 
 
 .. plot::
-    
-    import matplotlib
-    matplotlib.rcParams['text.usetex'] = True
     
     import numpy as np
     import matplotlib.pyplot as plt
@@ -70,9 +64,6 @@ First, let's set up a circular aperture for our telescope. We'll skip any centra
 
 .. plot::
     
-    import matplotlib
-    matplotlib.rcParams['text.usetex'] = True
-    
     import matplotlib.pyplot as plt
     from FTR.utils import circle_aperture
 
@@ -88,9 +79,6 @@ We can naievely use the pure Fourier Transform Reconstructor on apertured slopes
 
 
 .. plot::
-    
-    import matplotlib
-    matplotlib.rcParams['text.usetex'] = True
     
     import numpy as np
     import matplotlib.pyplot as plt
@@ -110,12 +98,12 @@ We can naievely use the pure Fourier Transform Reconstructor on apertured slopes
 
     f, (ax_p, ax_r) = plt.subplots(1, 2, figsize=(10,5))
     im = ax_p.imshow(phi_ap * ap, cmap='hot')
-    ax_p.set_title(r"$\hat{\phi_{\textrm{ap}}}$")
+    ax_p.set_title(r"$\hat{\phi_{ap}}$")
     f.colorbar(im, ax=ax_p, fraction=0.046, pad=0.04)
     phi_ap_r = remove_piston(ap, phi_ap - phi)[0]*ap
     dmax = np.max(np.abs(phi_ap_r))
     im = ax_r.imshow(phi_ap_r, cmap='bwr', vmin=-dmax, vmax=dmax)
-    ax_r.set_title(r"$\hat{\phi_{\textrm{ap}}} - \hat{\phi}$")
+    ax_r.set_title(r"$\hat{\phi_{ap}} - \hat{\phi}$")
     f.colorbar(im, ax=ax_r, fraction=0.046, pad=0.04)
 
 This leaves a characteristic residual pattern around the edge of the aperture.
@@ -134,9 +122,6 @@ Using a the slope-managed reconstructor, we get a much better reconstruction::
 
 .. plot:: 
     
-    import matplotlib
-    matplotlib.rcParams['text.usetex'] = True
-    
     import numpy as np
     import matplotlib.pyplot as plt
     from FTR import FourierTransformReconstructor as FTRecon
@@ -153,16 +138,13 @@ Using a the slope-managed reconstructor, we get a much better reconstruction::
     
     f, ax_p = plt.subplots(1, 1)
     im = ax_p.imshow(phi_sm * ap, cmap='hot')
-    ax_p.set_title(r"$\hat{\phi_{\textrm{sm}}}$")
+    ax_p.set_title(r"$\hat{\phi_{sm}}$")
     f.colorbar(im, ax=ax_p, fraction=0.046, pad=0.04)
     
 
 The residuals from this reconstruction are much improved.
 
 .. plot::
-    
-    import matplotlib
-    matplotlib.rcParams['text.usetex'] = True
     
     import numpy as np
     import matplotlib.pyplot as plt
@@ -192,11 +174,11 @@ The residuals from this reconstruction are much improved.
     dmax = np.max(np.abs([phi_sm_fa, phi_sm_ap, phi_ap_fa]))
 
     im = ax_r.imshow(phi_sm_fa, cmap='bwr', vmin=-dmax, vmax=dmax)
-    ax_r.set_title(r"$\hat{\phi_{\textrm{sm}}} - \hat{\phi}$")
+    ax_r.set_title(r"$\hat{\phi_{sm}} - \hat{\phi}$")
 
     im = ax_ar.imshow(phi_sm_ap, cmap='bwr', vmin=-dmax, vmax=dmax)
-    ax_ar.set_title(r"$\hat{\phi_{\textrm{sm}}} - \hat{\phi_\textrm{ap}}$")
+    ax_ar.set_title(r"$\hat{\phi_{sm}} - \hat{\phi_{ap}}$")
 
     im = ax_fr.imshow(phi_ap_fa, cmap='bwr', vmin=-dmax, vmax=dmax)
-    ax_fr.set_title(r"$\hat{\phi_{\textrm{ap}}} - \hat{\phi}$")
+    ax_fr.set_title(r"$\hat{\phi_{ap}} - \hat{\phi}$")
     f.colorbar(im, ax=[ax_r, ax_ar, ax_fr], fraction=0.046/3.0, pad=0.04)
