@@ -7,3 +7,4 @@ Documentation
 
   FTR/index.rst
   libFTR/index.rst
+  theory/index.rst
