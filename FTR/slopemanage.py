@@ -132,7 +132,7 @@ class SlopeManagedFTR(FourierTransformReconstructor):
         return estimate
     
 
-def _check_slopeargs(ap, xs, ys):
+def _check_slopeargs(ap, ys, xs):
     """Check arguments to the slope management function, and prepare them."""
     ap = np.array(ap, dtype=np.int)
     xs = np.array(xs, dtype=np.float)
@@ -148,9 +148,9 @@ def _check_slopeargs(ap, xs, ys):
     for name, data in zip("ap xs ys".split(),[ap, xs, ys]):
         if not np.isfinite(data).all():
             raise ValueError("slopemanage requires that {0} be finite.".format(name))
-    return (ap, xs, ys)
+    return (ap, ys, xs)
 
-def slope_management(ap, xs, ys):
+def slope_management(ap, ys, xs):
     """
     Slope management for the fast fourier transform.
     
@@ -179,12 +179,12 @@ def slope_management(ap, xs, ys):
         Raised when the slopes grid is not adaquate for slope management.
     
     """
-    return _slope_management(*_check_slopeargs(ap, xs, ys))
+    return _slope_management(*_check_slopeargs(ap, ys, xs))
     
-def _slope_management(ap, xs, ys):
+def _slope_management(ap, ys, xs):
     """This method implements :func:`slope_management`, but without argument checking, useful for the reconstructor."""
     
-    n = xs.shape[0]
+    n = ys.shape[0]
     
     xs_s = xs * ap
     ys_s = ys * ap
@@ -192,15 +192,15 @@ def _slope_management(ap, xs, ys):
     xs_c = np.copy(xs_s)
     ys_c = np.copy(ys_s)
     
-    ysr_sum = np.sum(ys_s, axis=0)
-    apr_sum = np.sum(ap, axis=0)
+    ysr_sum = np.sum(ys_s, axis=1)
+    apr_sum = np.sum(ap, axis=1)
     
-    xsc_sum = np.sum(xs_s, axis=1)
-    apc_sum = np.sum(ap, axis=1)
+    xsc_sum = np.sum(xs_s, axis=0)
+    apc_sum = np.sum(ap, axis=0)
     
     for j in range(n):
         if apr_sum[j] != 0:
-            loc = np.flatnonzero(ap[:,j] != 0)
+            loc = np.flatnonzero(ap[j,:] != 0)
             left = loc[0]
             right = loc[-1]
             
@@ -209,11 +209,11 @@ def _slope_management(ap, xs, ys):
             if right == (n-1):
                 raise ValueError("Not enough space to edge correct, row {j} ends at k={k}".format(j=j, k=n))
             
-            ys_c[left-1, j]  = -0.5 * ysr_sum[j]
-            ys_c[right+1, j] = -0.5 * ysr_sum[j]
+            ys_c[j, left-1 ]  = -0.5 * ysr_sum[j]
+            ys_c[j, right+1] = -0.5 * ysr_sum[j]
         
         if apc_sum[j] != 0:
-            loc = np.flatnonzero(ap[j,:] != 0)
+            loc = np.flatnonzero(ap[:,j] != 0)
             bottom = loc[0]
             top = loc[-1]
             
@@ -222,10 +222,10 @@ def _slope_management(ap, xs, ys):
             if top == (n - 1):
                 raise ValueError("Not enough space to edge correct, column {j} ends at k={k}".format(j=j, k=n))
             
-            xs_c[j, bottom-1] = -0.5 * xsc_sum[j]
-            xs_c[j, top+1]    = -0.5 * xsc_sum[j]
+            xs_c[bottom-1,j] = -0.5 * xsc_sum[j]
+            xs_c[top+1,j]    = -0.5 * xsc_sum[j]
             
-    return (xs_c, ys_c)
+    return (ys_c, xs_c)
     
     
 def edge_extend(ap, xs, ys):
