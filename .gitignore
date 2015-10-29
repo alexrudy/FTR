@@ -59,3 +59,5 @@ idlftr/*
 
 #py.test cache
 .cache/*
+
+DocExampleTests.ipynb
