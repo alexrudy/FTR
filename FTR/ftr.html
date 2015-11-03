@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Simple Fourier Transform Reconstructor &mdash; FTR v0.1</title>
+    <title>Simple Fourier Transform Reconstructor &mdash; FTR v0.2.0</title>
     
     <link rel="stylesheet" href="../_static/bootstrap-astropy.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.1',
+        VERSION:     '0.2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="../_static/sidebar.js"></script>
     <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
-    <link rel="top" title="FTR v0.1" href="../index.html" />
+    <link rel="top" title="FTR v0.2.0" href="../index.html" />
     <link rel="up" title="Fourier Transform Reconstructors" href="index.html" />
     <link rel="next" title="mod_hud_filter" href="../api/FTR.ftr.mod_hud_filter.html" />
     <link rel="prev" title="Fourier Transform Reconstructors" href="index.html" />
@@ -69,7 +69,7 @@
 	 |
       </li>
       <li>
-	<a href="../index.html">FTR v0.1</a>
+	<a href="../index.html">FTR v0.2.0</a>
 	 &raquo;
       </li>
       <li><a href="index.html" accesskey="U">Fourier Transform Reconstructors</a> &raquo;</li>
@@ -99,7 +99,7 @@
 </pre></div>
 </div>
 <p>The Fourier Transform reconstructor assumes that the estimated phase is occuring on a square, fully-periodic grid. In order to correct for this assumption, it is better to use a technique called &#8220;Slope Management&#8221;. Reconstructors that incorporate slope management are provided in <a class="reference internal" href="slopemanagement.html#module-FTR.slopemanage" title="FTR.slopemanage"><code class="xref py py-mod docutils literal"><span class="pre">FTR.slopemanage</span></code></a>.</p>
-<p>There are two similar reconstructor classes which users might want to take advantage of in this module, the <code class="xref py py-class docutils literal"><span class="pre">FourierTransformReconstructor</span></code> and <code class="xref py py-class docutils literal"><span class="pre">FastFTReconstructor</span></code>. The first class provides a pure-python implementation of the Fourier Transform reconstructor, and is generally easier to debug, in that it ensures that data passed wont cause problems. The second class, <code class="xref py py-class docutils literal"><span class="pre">FastFTReconstructor</span></code>, uses <a class="reference internal" href="libftr.html#libftr"><span>C implementation of FTR in libFTR</span></a> under the hood, and so achieves fast speeds leveraging the FFTW library and the speed of pure c-code. However, it does less work to ensure variable saftey, and so is not a good choice for debugging.</p>
+<p>There are two similar reconstructor classes which users might want to take advantage of in this module, the <code class="xref py py-class docutils literal"><span class="pre">FourierTransformReconstructor</span></code> and <code class="xref py py-class docutils literal"><span class="pre">FastFTReconstructor</span></code>. The first class provides a pure-python implementation of the Fourier Transform reconstructor, and is generally easier to debug, in that it ensures that data passed wont cause problems. The second class, <code class="xref py py-class docutils literal"><span class="pre">FastFTReconstructor</span></code>, uses <a class="reference internal" href="../libFTR/index.html#libftr"><span>libFTR: C implementation of FTR</span></a> under the hood, and so achieves fast speeds leveraging the FFTW library and the speed of pure c-code. However, it does less work to ensure variable saftey, and so is not a good choice for debugging.</p>
 <div class="section" id="reference-api">
 <h2>Reference / API<a class="headerlink" href="#reference-api" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="module-FTR.ftr">
@@ -144,14 +144,14 @@ from Lisa Poyneer&#8217;s 2007 dissertaiton.</p>
 <col width="90%" />
 </colgroup>
 <tbody valign="top">
-<tr class="row-odd"><td><a class="reference internal" href="../api/FTR.ftr.FTRFilter.html#FTR.ftr.FTRFilter" title="FTR.ftr.FTRFilter"><code class="xref py py-obj docutils literal"><span class="pre">FTRFilter</span></code></a></td>
-<td></td>
+<tr class="row-odd"><td><a class="reference internal" href="../api/FTR.ftr.FTRFilter.html#FTR.ftr.FTRFilter" title="FTR.ftr.FTRFilter"><code class="xref py py-obj docutils literal"><span class="pre">FTRFilter</span></code></a>(gx,gy,name)</td>
+<td>Tuple collection of filter values.</td>
 </tr>
 <tr class="row-even"><td><a class="reference internal" href="../api/FTR.ftr.FourierTransformReconstructor.html#FTR.ftr.FourierTransformReconstructor" title="FTR.ftr.FourierTransformReconstructor"><code class="xref py py-obj docutils literal"><span class="pre">FourierTransformReconstructor</span></code></a>(ap[,&nbsp;filter,&nbsp;...])</td>
 <td>A reconstructor which uses the fourier transform to turn slopes into an estiate of the wavefront phase.</td>
 </tr>
 <tr class="row-odd"><td><a class="reference internal" href="../api/FTR.ftr.FastFTReconstructor.html#FTR.ftr.FastFTReconstructor" title="FTR.ftr.FastFTReconstructor"><code class="xref py py-obj docutils literal"><span class="pre">FastFTReconstructor</span></code></a>(ap[,&nbsp;filter,&nbsp;manage_tt,&nbsp;...])</td>
-<td>A fourier transform reconstructor which implements the reconstruct method using <a class="reference internal" href="libftr.html#libftr"><span>C implementation of FTR in libFTR</span></a>.</td>
+<td>A fourier transform reconstructor which implements the reconstruct method using <a class="reference internal" href="../libFTR/index.html#libftr"><span>libFTR: C implementation of FTR</span></a>.</td>
 </tr>
 </tbody>
 </table>
@@ -159,7 +159,7 @@ from Lisa Poyneer&#8217;s 2007 dissertaiton.</p>
 <div class="section" id="class-inheritance-diagram">
 <h4>Class Inheritance Diagram<a class="headerlink" href="#class-inheritance-diagram" title="Permalink to this headline">¶</a></h4>
 <p class="graphviz">
-<img src="../_images/inheritance-9c88d239e0f66bbcb97c13c1e71700236805259a.svg" alt="Inheritance diagram of FTR.ftr.FTRFilter, FTR.ftr.FourierTransformReconstructor, FTR.ftr.FastFTReconstructor" class="inheritance"/>
+<img src="../_images/inheritance-7810731e115fb43768c7464c2fb236013fb866d1.svg" alt="Inheritance diagram of FTR.ftr.FTRFilter, FTR.ftr.FourierTransformReconstructor, FTR.ftr.FastFTReconstructor" class="inheritance"/>
 </p>
 </div>
 </div>
@@ -200,7 +200,7 @@ from Lisa Poyneer&#8217;s 2007 dissertaiton.</p>
   <p>
     &copy; Copyright 2015, Alex Rudy.<br/>
     Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.1. &nbsp;
-    Last built 16 Oct 2015. <br/>
+    Last built 03 Nov 2015. <br/>
   </p>
 </footer>
   </body>

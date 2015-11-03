@@ -1,0 +1,183 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Slope Periodicity Management &mdash; FTR v0.2.0</title>
+    
+    <link rel="stylesheet" href="../_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
+    <link rel="top" title="FTR v0.2.0" href="../index.html" />
+    <link rel="up" title="Understanding the Fourier Transform Reconstructor" href="index.html" />
+    <link rel="prev" title="Understanding the Fourier Transform Reconstructor" href="index.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="../_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../index.html"><span id="logotext1">FTR</span><span id="logotext2">AO</span><span id="logotext3">:docs</span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="index.html" title="Understanding the Fourier Transform Reconstructor">
+	  &laquo; previous
+	</a>
+	
+      </li>
+      <li>
+	<a href="../index.html">FTR v0.2.0</a>
+	 &raquo;
+      </li>
+      <li><a href="index.html" accesskey="U">Understanding the Fourier Transform Reconstructor</a> &raquo;</li>
+      
+      <li>Slope Periodicity Management</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="slope-periodicity-management">
+<h1>Slope Periodicity Management<a class="headerlink" href="#slope-periodicity-management" title="Permalink to this headline">¶</a></h1>
+<p>The Fourier Transfrom Reconstructor assumes a fully periodic square grid for the phase. Most telescopes are not square, and atmospheric turbulence is not periodic, so we have to use a strategy to account for the non-periodicity in the slope grid. We do this by adding pseudo-slopes outside the telescope aperture, which serve to make the slope domain appear periodic, despite the non-periodic nature of the observed slopes.</p>
+<div class="section" id="reconstruction-on-a-periodic-domain">
+<h2>Reconstruction on a periodic domain<a class="headerlink" href="#reconstruction-on-a-periodic-domain" title="Permalink to this headline">¶</a></h2>
+<p>Lets provide some example slopes on a fully periodic domain to work with.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sx</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span><span class="mi">20</span><span class="p">,</span><span class="mi">20</span><span class="p">)[</span><span class="bp">None</span><span class="p">,:])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">20</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span> <span class="o">+</span> <span class="mi">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sy</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">20</span><span class="p">)[:,</span><span class="bp">None</span><span class="p">])</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span><span class="mi">20</span><span class="p">))</span> <span class="o">+</span> <span class="mi">2</span>
+</pre></div>
+</div>
+<p>These slopes are both periodic on the full fourier grid, and can be reconstructed with a pure Fourier Transform Reconstructor.</p>
+<p>(<a class="reference external" href="../theory/slopemanagment-1.py">Source code</a>, <a class="reference external" href="../theory/slopemanagment-1.png">png</a>, <a class="reference external" href="../theory/slopemanagment-1.hires.png">hires.png</a>, <a class="reference external" href="../theory/slopemanagment-1.pdf">pdf</a>)</p>
+<div class="figure">
+<img alt="../_images/slopemanagment-1.png" src="../_images/slopemanagment-1.png" />
+</div>
+<p>Reconstructing these slopes with the Fourier Transform Reconstructor is quite easy:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">FTR</span> <span class="kn">import</span> <span class="n">FourierTransformReconstructor</span> <span class="k">as</span> <span class="n">FTRecon</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">recon</span> <span class="o">=</span> <span class="n">FTRecon</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">20</span><span class="p">,</span><span class="mi">20</span><span class="p">)),</span> <span class="nb">filter</span><span class="o">=</span><span class="s">&#39;mod_hud&#39;</span><span class="p">,</span> <span class="n">suppress_tt</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">phi</span> <span class="o">=</span> <span class="n">recon</span><span class="p">(</span><span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>(<a class="reference external" href="../theory/slopemanagment-2.py">Source code</a>, <a class="reference external" href="../theory/slopemanagment-2.png">png</a>, <a class="reference external" href="../theory/slopemanagment-2.hires.png">hires.png</a>, <a class="reference external" href="../theory/slopemanagment-2.pdf">pdf</a>)</p>
+<div class="figure">
+<img alt="../_images/slopemanagment-2.png" src="../_images/slopemanagment-2.png" />
+</div>
+</div>
+<div class="section" id="reconstruction-without-slope-management">
+<h2>Reconstruction without slope management<a class="headerlink" href="#reconstruction-without-slope-management" title="Permalink to this headline">¶</a></h2>
+<p>First, let&#8217;s set up a circular aperture for our telescope. We&#8217;ll skip any central obscuration, though in general this shouldn&#8217;t provide a problem, as the secondary obscuration is continuous across the subapertures.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">FTR.utils</span> <span class="kn">import</span> <span class="n">circle_aperture</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ap</span> <span class="o">=</span> <span class="n">circle_aperture</span><span class="p">((</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span> <span class="mi">8</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>(<a class="reference external" href="../theory/slopemanagment-3.py">Source code</a>, <a class="reference external" href="../theory/slopemanagment-3.png">png</a>, <a class="reference external" href="../theory/slopemanagment-3.hires.png">hires.png</a>, <a class="reference external" href="../theory/slopemanagment-3.pdf">pdf</a>)</p>
+<div class="figure">
+<img alt="../_images/slopemanagment-3.png" src="../_images/slopemanagment-3.png" />
+</div>
+<p>We can naievely use the pure Fourier Transform Reconstructor on apertured slopes:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">recon</span> <span class="o">=</span> <span class="n">FTRecon</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="s">&#39;mod_hud&#39;</span><span class="p">,</span> <span class="n">suppress_tt</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">phi_ap</span> <span class="o">=</span> <span class="n">recon</span><span class="p">(</span><span class="n">sx</span> <span class="o">*</span> <span class="n">ap</span><span class="p">,</span> <span class="n">sy</span> <span class="o">*</span> <span class="n">ap</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>(<a class="reference external" href="../theory/slopemanagment-4.py">Source code</a>, <a class="reference external" href="../theory/slopemanagment-4.png">png</a>, <a class="reference external" href="../theory/slopemanagment-4.hires.png">hires.png</a>, <a class="reference external" href="../theory/slopemanagment-4.pdf">pdf</a>)</p>
+<div class="figure">
+<img alt="../_images/slopemanagment-4.png" src="../_images/slopemanagment-4.png" />
+</div>
+<p>This leaves a characteristic residual pattern around the edge of the aperture.</p>
+</div>
+<div class="section" id="reconstruction-with-slope-management">
+<h2>Reconstruction with slope management<a class="headerlink" href="#reconstruction-with-slope-management" title="Permalink to this headline">¶</a></h2>
+<p>To improve the reconstruction with an aperture, we apply additional slopes outside the aperture which correct for the periodicity of the system.</p>
+<p>Using a the slope-managed reconstructor, we get a much better reconstruction:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">FTR.slopemanage</span> <span class="kn">import</span> <span class="n">SlopeManagedFTR</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">recon</span> <span class="o">=</span> <span class="n">SlopeManagedFTR</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="s">&#39;mod_hud&#39;</span><span class="p">,</span> <span class="n">suppress_tt</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">phi_sm</span> <span class="o">=</span> <span class="n">recon</span><span class="p">(</span><span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>(<a class="reference external" href="../theory/slopemanagment-5.py">Source code</a>, <a class="reference external" href="../theory/slopemanagment-5.png">png</a>, <a class="reference external" href="../theory/slopemanagment-5.hires.png">hires.png</a>, <a class="reference external" href="../theory/slopemanagment-5.pdf">pdf</a>)</p>
+<div class="figure">
+<img alt="../_images/slopemanagment-5.png" src="../_images/slopemanagment-5.png" />
+</div>
+<p>The residuals from this reconstruction are much improved.</p>
+<p>(<a class="reference external" href="../theory/slopemanagment-6.py">Source code</a>, <a class="reference external" href="../theory/slopemanagment-6.png">png</a>, <a class="reference external" href="../theory/slopemanagment-6.hires.png">hires.png</a>, <a class="reference external" href="../theory/slopemanagment-6.pdf">pdf</a>)</p>
+<div class="figure">
+<img alt="../_images/slopemanagment-6.png" src="../_images/slopemanagment-6.png" />
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Slope Periodicity Management</a><ul>
+<li><a class="reference internal" href="#reconstruction-on-a-periodic-domain">Reconstruction on a periodic domain</a></li>
+<li><a class="reference internal" href="#reconstruction-without-slope-management">Reconstruction without slope management</a></li>
+<li><a class="reference internal" href="#reconstruction-with-slope-management">Reconstruction with slope management</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../_sources/theory/slopemanagment.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2015, Alex Rudy.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.1. &nbsp;
+    Last built 03 Nov 2015. <br/>
+  </p>
+</footer>
+  </body>
+</html>
