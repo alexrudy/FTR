@@ -209,6 +209,13 @@ def fill_hermitian_fft(array):
     """Fill an FFT-shifted array so it is hermitian."""
     array_shifted = np.fft.fftshift(np.asarray(array, dtype=np.complex))
     array_hermitian = make_hermitian(array_shifted)
-    return np.fft.ifftshift(array_hermitian.view(np.ndarray))
-    
+    return array.__array_wrap__(np.fft.ifftshift(array_hermitian.view(np.ndarray)))
 
+def expand_aperture(ap):
+    """Expand an aperture, illuminating neighboring points."""
+    nearby = (ap != 0)
+    nearby[1:-1,1:-1] |= ap[:-2,:-2]
+    nearby[1:-1,1:-1] |= ap[2:,2:]
+    nearby[1:-1,1:-1] |= ap[:-2,2:]
+    nearby[1:-1,1:-1] |= ap[2:,:-2]
+    return nearby
