@@ -36,7 +36,7 @@ from .utils import (complexmp, ignoredivide, remove_piston, remove_tiptilt,
 __all__ = ['FTRFilter', 'FourierTransformReconstructor', 'FastFTReconstructor', 'mod_hud_filter', 'fried_filter', 'ideal_filter', 'inplace_filter', 'hud_filter']
 
 FTRFilter = collections.namedtuple("FTRFilter", ["gx", "gy", "name"])
-if six.PY3:
+if six.PY3: # pragma: py3
     FTRFilter.__doc__ = """
     FTRFilter(gx,gy,name)
 
@@ -107,6 +107,32 @@ class FourierTransformReconstructor(Reconstructor):
         >>> recon(xs, ys)
         array([...])
     
+    Reconstructor filters can be changed dynamically::
+        
+        >>> import numpy as np
+        >>> aperture = np.ones((10,10))
+        >>> recon = FourierTransformReconstructor(aperture, "fried")
+        >>> recon
+        <FourierTransformReconstructor (10x10) filter='fried'>
+        >>> recon.use("mod_hud")
+        >>> recon
+        <FourierTransformReconstructor (10x10) filter='mod_hud'>
+        >>> recon.name = "hud"
+        >>> recon
+        <FourierTransformReconstructor (10x10) filter='hud'>
+    
+    You can set filter components individually::
+        
+        >>> import numpy as np
+        >>> aperture = np.ones((10,10))
+        >>> recon = FourierTransformReconstructor(aperture, "fried")
+        >>> recon
+        <FourierTransformReconstructor (10x10) filter='fried'>
+        >>> recon.gx = np.ones((10,10), dtype=np.complex) + 1j * np.sin(np.arange(10) / 10 * np.pi)
+        >>> recon.name = "fried custom-x"
+        >>> recon
+        <FourierTransformReconstructor (10x10) filter='fried custom-x'>
+        
     
     """
     
@@ -116,6 +142,8 @@ class FourierTransformReconstructor(Reconstructor):
     _dzero = None
     _filtername = "UNDEFINED"
     _denominator = None
+    _suppress_tt = None
+    _manage_tt = None
     
     def __repr__(self):
         """Represent this object."""
@@ -132,18 +160,42 @@ class FourierTransformReconstructor(Reconstructor):
             self.use(six.text_type(filter))
         
         self.suppress_tt = bool(suppress_tt)
-        if manage_tt is None:
-            self.manage_tt = bool(suppress_tt)
-            self.suppress_tt = bool(suppress_tt)
-        else:
-            self.manage_tt = bool(manage_tt)
-            if suppress_tt and not self.manage_tt:
-                raise TypeError("{0:s}: Can't specify manage_tt=False and "
-                "suppress_tt=True, as tip/tilt will not be suppressed when "
-                "tip-tilt isn't removed from the slopes initially.")
-            self.suppress_tt = False
+        self.manage_tt = manage_tt
         self.y, self.x = shapegrid(self.shape)
         
+    @property
+    def suppress_tt(self):
+        """Tip-tilt suppression flag."""
+        return self._suppress_tt
+        
+    @suppress_tt.setter
+    def suppress_tt(self, suppress_tt):
+        """Set the tip-tilt suppression flag."""
+        if bool(suppress_tt) and self._manage_tt is False:
+            raise ValueError("{0:s}: Can't specify manage_tt=False and "
+                "suppress_tt=True, as tip/tilt will not be suppressed when "
+                "tip-tilt isn't removed from the slopes initially.".format(
+                self.__class__.__name__))
+        self._suppress_tt = bool(suppress_tt)
+    
+    @property
+    def manage_tt(self):
+        """Tip-tilt management flag."""
+        if self._manage_tt is None:
+            return self._suppress_tt
+        return self._manage_tt
+        
+    @manage_tt.setter
+    def manage_tt(self, manage_tt):
+        """Set the tip-tilt management flag."""
+        if bool(manage_tt) is False and manage_tt is not None and self._suppress_tt:
+            raise ValueError("{0:s}: Can't specify manage_tt=False and "
+                "suppress_tt=True, as tip/tilt will not be suppressed when "
+                "tip-tilt isn't removed from the slopes initially.".format(
+                self.__class__.__name__))
+        self._manage_tt = bool(manage_tt) if manage_tt is not None else manage_tt
+    
+    
     @property
     def name(self):
         """Filter name"""
@@ -206,7 +258,7 @@ class FourierTransformReconstructor(Reconstructor):
     @ap.setter
     def ap(self, value):
         """Validate aperture."""
-        ap = np.asarray(value).astype(np.bool)
+        ap = np.asarray(value) != 0
         if ap.shape != self.shape:
             raise ValueError("Aperture should be same shape as input data. Found {0!r}, expected {1!r}.".format(ap.shape, self.shape))
         if not ap.any():
