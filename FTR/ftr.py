@@ -17,6 +17,7 @@ from __future__ import (absolute_import, unicode_literals, division,
 import abc
 import six
 import collections
+import weakref
 
 # Scientific Python Imports
 import numpy as np
@@ -42,6 +43,20 @@ if six.PY3: # pragma: py3
 
     Tuple collection of filter values.
     """
+
+@six.add_metaclass(abc.ABCMeta)
+class Filter(object):
+    """Base class for things which further filter phase."""
+    
+    
+    def __call__(self, est_ft):
+        """Callable to directly apply the filter."""
+        return self.apply_filter(est_ft)
+    
+    @abc.abstractmethod
+    def apply_filter(self, est_ft):
+        """Apply the filter."""
+        return est_ft
 
 class FourierTransformReconstructor(Reconstructor):
     """A reconstructor which uses the fourier transform to turn slopes into an
@@ -144,12 +159,14 @@ class FourierTransformReconstructor(Reconstructor):
     _denominator = None
     _suppress_tt = None
     _manage_tt = None
+    _filters = None
     
     def __repr__(self):
         """Represent this object."""
         return "<{0} {1} filter='{2}'{3}>".format(self.__class__.__name__, shapestr(self.shape), self.name, "" if self.tt_mode == "unmanaged" else " tt='{0}'".format(self.tt_mode))
     
     def __init__(self, ap, filter=None, manage_tt=None, suppress_tt=False):
+        self._post_filters = []
         super(FourierTransformReconstructor, self).__init__()
         ap = np.asarray(ap, dtype=np.bool)
         self._shape = ap.shape
@@ -316,6 +333,16 @@ class FourierTransformReconstructor(Reconstructor):
         self._denominator[(self._denominator == 0.0)] = 1.0 #Fix non-hermitian parts.
         return self._denominator
         
+    def add_post_filter(self, filter):
+        """Add a filter to be applied to the phase."""
+        self._post_filters.append(filter)
+        
+    def apply_filters(self, est_ft):
+        """Apply phase filters."""
+        for filt in self._post_filters:
+            est_ft = filt(est_ft)
+        return est_ft
+        
     def apply_filter(self, xs_ft, ys_ft):
         r"""Apply the filter to the FFT'd values.
         
@@ -383,6 +410,7 @@ class FourierTransformReconstructor(Reconstructor):
         
         # There is a factor of two here. This is applied because the normalization of the FFT in IDL is different from the one used here. See FFTNormalization.rst
         est_ft = self.apply_filter(xs_ft, ys_ft) * 2.0
+        est_ft = self.apply_filters(est_ft)
         
         estimate = np.real(fftpack.ifftn(est_ft))
         
