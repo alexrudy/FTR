@@ -219,3 +219,75 @@ def expand_aperture(ap):
     nearby[1:-1,1:-1] |= ap[:-2,2:]
     nearby[1:-1,1:-1] |= ap[2:,:-2]
     return nearby
+    
+def create_complex_HDU(data, kind=None, header=None):
+    """Create a FITS HDU which contains complex-valued data.
+    
+    Complex valued data is stored by adding a new dimension, with shape 2 which
+    contains the real and imaginary part of each complex value. The HDU header
+    is updated with a few keywords which describe the nature of the data. The
+    keyword ``COMPLEX`` is a boolean identifying a complex-valued HDU. The
+    keyword ``CAXIS`` is the axis along which the data is split into complex
+    and real-valued parts. ``REC`` is an informational keyword which describes
+    how to re-assemble the data in python.
+
+    Parameters
+    ----------
+    data : array-like
+        The data to convert to a complex HDU
+    kind : HDU class, optional
+        The kind of HDU to return, if not provided, defaults to ImageHDU.
+    header : FITS Header, optional
+        A header to insert into the HDU
+    
+    Returns
+    -------
+    HDU : FITS HDU
+        The FITS Header-Data Unit with complex data.
+    
+    """
+    from astropy.io import fits
+    from astropy.io.fits.hdu.base import _BaseHDU
+    cls = fits.ImageHDU if kind is None else kind
+    if not issubclass(cls, _BaseHDU):
+        raise ValueError("HDUs must be valid FITS HDU kinds, got {0!r}.".format(cls))
+    HDU = cls(np.array([data.real, data.imag]), header=header)
+    HDU.header["COMPLEX"] = True, "Data is complex"
+    HDU.header["CAXIS"] = data.ndim + 1, "Complex data axis"
+    HDU.header["REC"] = ("data[0]+1j*data[1]", "To reconstruct complex data in python")
+    return HDU
+    
+def read_complex_HDU(HDU, force=False):
+    """Read data from a complex HDU.
+    
+    Loads data from an HDU, and converts split complex data (such as data
+    written by :func:`create_complex_HDU`) into a numpy complex array. Uses
+    FITS keywords to identify complex HDUs. ``COMPLEX`` should be a boolean
+    which identifies a complex HDU. ``CAXIS`` should identify the FITS axis
+    along which the data is split between real and complex values. Headers
+    which don't appear to have complex data (or have ``COMPLEX`` set to
+    ``False``) will just return the data from the HDU.
+    
+    When ``CAXIS`` is missing, the complex axis is assumed to be the last FITS
+    axis (alternatively the first numpy axis.)
+    
+    Parameters
+    ----------
+    HDU : a FITS HDU
+        The HDU which might have complex data.
+    force : bool, optional
+        Whether to force the HDU to appear to have complex data.
+    
+    """
+    if HDU.header.get('COMPLEX', False) or force:
+        ndim = int(HDU.header["NAXIS"])
+        caxis = int(HDU.header.get("CAXIS", ndim - 1))
+        caxis = ndim - caxis
+        cslice = [ slice(None, None) for i in range(ndim)]
+        cslice[caxis] = 0
+        creal = tuple(cslice)
+        cslice[caxis] = 1
+        cimag = tuple(cslice)
+        return HDU.data[creal] + 1j * HDU.data[cimag]
+    else:
+        return HDU.data
