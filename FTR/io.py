@@ -29,11 +29,12 @@ class IOBase(object):
                 format, cls.__name__))
         return getattr(cls, function)(filename, **kwargs)
         
-    def formats(self, readonly=False, writeonly=False):
+    @classmethod
+    def formats(cls, readonly=False, writeonly=False):
         """Return a dictionary of formats, with tuples for read/write."""
         formats = {}
-        for method in dir(self):
-            if not (method.endsiwth("__") and len(method) > 7):
+        for method in dir(cls):
+            if not (method.endswith("__") and len(method) > 7):
                 continue
             if method.startswith("__to_"):
                 format = method[5:-2]
@@ -47,13 +48,17 @@ class IOBase(object):
         
         # Hanlde the return value.
         if readonly:
+            readers = []
             for key, (read, write) in formats.values():
                 if read:
-                    yield key
+                    readers.append(key)
+            formats = readers
         elif writeonly:
+            writers = []
             for key, (read, write) in formats.values():
                 if write:
-                    yield key
-        else:
-            return formats
+                    writers.append(key)
+            formats = writers
+        
+        return formats
                 
