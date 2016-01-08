@@ -7,7 +7,7 @@ import numpy as np
 
 from .ftr import Filter
 from .io import IOBase
-from .utils import shapestr
+from .utils import shapestr, create_complex_HDU, read_complex_HDU
 
 __all__ = ['LQGFilter']
 
@@ -95,7 +95,7 @@ class LQGFilter(Filter, IOBase):
         import h5py
         with h5py.File(file, kwargs.pop('mode', 'r')) as file:
             group = file['LQG Filter']
-            args = [group[name] for name in [ "gains", "alphas", "highpass_coefficients" ]]
+            args = [group[name][...] for name in [ "gains", "alphas", "highpass_coefficients" ]]
         return cls(*args)
         
     def __to_fits__(self, file, **kwargs):
@@ -148,27 +148,4 @@ class LQGFilter(Filter, IOBase):
         return cls(gains, alphas, hp_coeffs)
     
 
-def create_complex_HDU(data):
-    """Create a FITS HDU which contains complex-valued data"""
-    from astropy.io import fits
-    HDU = fits.ImageHDU(np.array([data.real, data.imag]))
-    HDU.header["COMPLEX"] = True, "Data is complex"
-    HDU.header["CAXIS"] = data.ndim + 1, "Complex data axis"
-    HDU.header["REC"] = ("data[0]+1j*data[1]", "To reconstruct complex data")
-    return HDU
-    
-def read_complex_HDU(HDU, force=False):
-    """Read data from a complex HDU."""
-    from astropy.io import fits
-    if HDU.header['COMPLEX'] or force:
-        ndim = int(HDU.header["NAXIS"])
-        caxis = int(HDU.header.get("CAXIS", ndim - 1))
-        caxis = ndim - caxis
-        cslice = [ slice(None, None) for i in range(ndim)]
-        cslice[caxis] = 0
-        creal = tuple(cslice)
-        cslice[caxis] = 1
-        cimag = tuple(cslice)
-        return HDU.data[creal] + 1j * HDU.data[cimag]
-    else:
-        return HDU.data
+
