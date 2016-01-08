@@ -52,6 +52,7 @@ lqg_filter lqg_new_filter(const int nl, const int ny, const int nx,
     filter->hp_coefficients = hp_coefficients;
     
     ftr_map_half_complex(ny, nx, filter->ift, filter->ifs);
+    return filter;
     
 error:
     lqg_destroy(filter);
