@@ -7,8 +7,6 @@ import sys
 import os
 import glob
 import copy
-from distutils.core import Extension
-from astropy_helpers import setup_helpers
 
 __all__ = ['get_external_libraries', 'get_libFTR_extensions']
 
@@ -18,13 +16,27 @@ def get_external_libraries():
     return ['ftr']
     
 def get_libFTR_include_directory():
-    """Get libFTR include directory."""
+    """Get the libFTR include directory, relative to the standard location of setup.py
+    
+    The path is roughly ./cextern/libFTR/src
+    
+    """
     root_directory = os.path.dirname(os.path.abspath(sys.argv[0]))
     include_directory = os.path.join(root_directory, 'cextern', library_name, 'src')
     return include_directory
 
 def get_libFTR_extensions(filename, modulename, pattern="*.pyx", **kwargs):
-    """docstring for get_libFTR_extensions"""
+    """Make distutils extensions for libFTR files in the FTR tree.
+    
+    :param filename: Filename to be used as a root for finding extensions. Often ``__file__``.
+    :param modulename: Module name to be used as an extension root. Often ``__name__``.
+    :param pattern: A glob pattern to be used to find extension source files.
+    :kwargs: Remaining keyword arguments provide the default values for the distutils extension.
+    :returns: Return a list of distutils extensions.
+    
+    """
+    from distutils.core import Extension
+    from astropy_helpers import setup_helpers
     
     this_directory = os.path.dirname(filename)
     this_name = modulename.split(".")[:-1]
