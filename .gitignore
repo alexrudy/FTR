@@ -57,6 +57,10 @@ distribute-*.tar.gz
 # (in fact, probably can't!)
 idlftr/*
 
+# FITS output files
+*.fits
+*.hdf5
+
 #py.test cache
 .cache/*
 
