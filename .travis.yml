@@ -32,6 +32,8 @@ env:
         - ASTROPY_VERSION=stable
         - CONDA_INSTALL='conda install -c astropy-ci-extras --yes'
         - PIP_INSTALL='pip install'
+        - LIBRARY_PATH="$HOME/cextern/libFTR/lib/"
+        - SYSTEM_FTR=''
     matrix:
         - SETUP_CMD='egg_info'
         - SETUP_CMD='test'
@@ -47,6 +49,10 @@ matrix:
         # may run for a long time
         - python: 2.7
           env: SETUP_CMD='build_sphinx -w'
+          
+        # Try with external libraries
+        - python: 2.7
+          env: SETUP_CMD='test' SYSTEM_FTR='true'
 
         # Try Astropy development version
         - python: 2.7
@@ -85,6 +91,10 @@ install:
     # CONDA
     - conda create --yes -n test -c astropy-ci-extras python=$TRAVIS_PYTHON_VERSION
     - source activate test
+    
+    # System FTR library
+    - if [[ $SYSTEM_FTR == 'true' ]]; then cd cextern/libFTR/ && make; fi
+    - if [[ $SYSTEM_FTR == 'true' ]]; then python setup.py build_ext --use-system-ftr --library-dirs $HOME/cextern/libFTR/lib/ saveopts; fi
 
     # CORE DEPENDENCIES
     - if [[ $SETUP_CMD != egg_info ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION pytest pip Cython jinja2; fi
