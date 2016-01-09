@@ -49,10 +49,6 @@ matrix:
         # may run for a long time
         - python: 2.7
           env: SETUP_CMD='build_sphinx -w'
-          
-        # Try with external libraries
-        - python: 2.7
-          env: SETUP_CMD='test' SYSTEM_FTR='true'
 
         # Try Astropy development version
         - python: 2.7
@@ -67,6 +63,11 @@ matrix:
           env: NUMPY_VERSION=1.7 SETUP_CMD='test'
         - python: 2.7
           env: NUMPY_VERSION=1.6 SETUP_CMD='test'
+
+    allow_failures:
+      # Try with external libraries
+      - python: 2.7
+        env: SETUP_CMD='test' SYSTEM_FTR='true'
 
 before_install:
 
