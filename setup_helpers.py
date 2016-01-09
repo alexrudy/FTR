@@ -68,7 +68,8 @@ def get_libFTR_extensions(filename, modulename, pattern="*.pyx", **kwargs):
         if setup_helpers.use_system_library('ftr'):
             this_extension_args['libraries'].append('ftr')
         else:
-            this_extension_args['sources'].extend(glob.glob(os.path.join(include_directory, "*" + cname + "*.c")))
+            this_extension_args['sources'].extend(glob.glob(os.path.join(include_directory, "*.c")))
+            this_extension_args['sources'] = list(set(this_extension_args['sources']))
         # Extension object.
         extension = Extension(name, **this_extension_args)
         extensions.append(extension)
