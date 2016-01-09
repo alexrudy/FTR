@@ -94,6 +94,7 @@ install:
     
     # System FTR library
     - if [[ $SYSTEM_FTR == 'true' ]]; then cd cextern/libFTR/ && make; fi
+    - if [[ $SYSTEM_FTR == 'true' ]]; then cd ../../; fi
     - if [[ $SYSTEM_FTR == 'true' ]]; then python setup.py build_ext --use-system-ftr --library-dirs $HOME/cextern/libFTR/lib/ saveopts; fi
 
     # CORE DEPENDENCIES
