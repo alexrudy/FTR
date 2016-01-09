@@ -32,7 +32,7 @@ env:
         - ASTROPY_VERSION=stable
         - CONDA_INSTALL='conda install -c astropy-ci-extras --yes'
         - PIP_INSTALL='pip install'
-        - LIBRARY_PATH="$HOME/cextern/libFTR/lib/"
+        - LIBRARY_PATH="$PWD/cextern/libFTR/lib/"
         - SYSTEM_FTR=''
     matrix:
         - SETUP_CMD='egg_info'
