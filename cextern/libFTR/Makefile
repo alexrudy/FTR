@@ -7,7 +7,7 @@
 #
 
 LDFLAGS = -g -O3 -Wall -lfftw3_threads -lfftw3 -lm -lpthread -L /opt/local/lib
-CFLAGS = -g -O3 -Wall -I$(INCLUDEDIR)
+CFLAGS = -g -O3 -Wall -I$(INCLUDEDIR) -fPIC
 LIBFLAGS = $(LDFLAGS) -shared -fPIC
 BUILDDIR = build/
 SRCDIR = src/
