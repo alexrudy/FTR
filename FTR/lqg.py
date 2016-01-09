@@ -8,6 +8,7 @@ import numpy as np
 from .ftr import Filter
 from .io import IOBase
 from .utils import shapestr, create_complex_HDU, read_complex_HDU
+from .libftr._lqg import CLQGBase
 
 __all__ = ['LQGFilter']
 
@@ -148,4 +149,7 @@ class LQGFilter(Filter, IOBase):
         return cls(gains, alphas, hp_coeffs)
     
 
+class FastLQGFilter(CLQGBase, LQGFilter):
+    """A c-based implementation of the LQG filter."""
+    pass
 

@@ -8,7 +8,7 @@ import pytest
 import numpy as np
 
 from .test_filter_base import FilterTestBase
-from ..lqg import LQGFilter
+from ..lqg import LQGFilter, FastLQGFilter
 
 class TestLQGFilter(FilterTestBase):
     """Tests for the LQG filter."""
@@ -31,4 +31,12 @@ class TestLQGFilter(FilterTestBase):
         hp_coeffs = np.random.randn(*shape) + 1j * np.random.randn(*shape)
         return self.cls(gains, alphas, hp_coeffs)
         
+    
+
+class TestCLQG(TestLQGFilter):
+    """Test the LQG filter."""
+    
+    cls = FastLQGFilter
+    
+    repr = "<FastLQGFilter nlayers=... shape={shape}>"
     

@@ -76,8 +76,10 @@ class FilterTestBase(object):
         assert isinstance(r, six.string_types)
         if self.repr is not None:
             expected = self.repr.format(shape=shapestr(shape))
-            if expected.endswith("..."):
-                assert r.startswith(expected[:-3])
+            if "..." in expected:
+                start, end = expected.split("...", 1)
+                assert r.startswith(start)
+                assert r.endswith(end)
             else:
                 assert r == expected
     
