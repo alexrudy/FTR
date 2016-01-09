@@ -117,7 +117,7 @@ install:
     # System FTR library
     - if [[ $SYSTEM_FTR == 'true' ]]; then cd cextern/libFTR/ && make; fi
     - if [[ $SYSTEM_FTR == 'true' ]]; then cd ../../; fi
-    - if [[ $SYSTEM_FTR == 'true' ]]; then python setup.py build_ext --use-system-ftr --library-dirs $HOME/cextern/libFTR/lib/ saveopts; fi
+    - if [[ $SYSTEM_FTR == 'true' ]]; then python setup.py build_ext --use-system-ftr --library-dirs $PWD/cextern/libFTR/lib/ saveopts; fi
     
     # COVERAGE DEPENDENCIES
     - if [[ $SETUP_CMD == 'test --coverage' ]]; then $PIP_INSTALL coverage==3.7.1 coveralls; fi
