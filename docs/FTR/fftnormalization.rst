@@ -1,11 +1,11 @@
 FFT Normalization
 *****************
 
-Different FFT implementations often have different normalization parameters. Most FFTs will be defined such that a forward transform follwed by an inverse transform will result in the same values. However, implementations tend to apply the normalization at different points. This document describes the normalizations applied by each FFT, and their implications for the Fourier transform reconstructor.
+Different FFT implementations often have different normalization parameters. Most FFTs will be defined such that a forward transform followed by an inverse transform will result in the same values. However, implementations tend to apply the normalization at different points. This document describes the normalizations applied by each FFT, and their implications for the Fourier transform reconstructor.
 
 The implementation of the FTR is taken from Lisa Poyneer's IDL implementation (which is not) included in this distribution. However, we can use the IDL FFT definition to clarify our FFT normalization. This document shows how to modify other FFT normalizations so that they match the IDL normalization, the canonical one used in this algorithm. [#fIDL]_
 
-.. [#fIDL] There is nothing *more* correct about the IDL implementation, it just happens to be the canonical implementation as it is the referernce implementaiton provided to match Lisa's thesis.
+.. [#fIDL] There is nothing *more* correct about the IDL implementation, it just happens to be the canonical implementation as it is the reference implementation provided to match Lisa's thesis.
 
 IDL Normalization
 -----------------
