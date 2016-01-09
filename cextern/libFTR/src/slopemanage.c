@@ -99,7 +99,7 @@ sm_plan slope_management_plan(const int ny, const int nx, const int *ap)
         {
             plan->col_any[c] = 1;
         }
-        if(plan->top[c] == 0 || plan->bottom[c] == nx - 1)
+        if(plan->top[c] == 0 || plan->bottom[c] == ny - 1)
         {
           sentinel("No room to edge correct in y.");
         }
@@ -171,6 +171,7 @@ void slope_management(const int ny, const int nx, const int *ap, double * sy, do
 {
     sm_plan plan;
     plan = slope_management_plan(ny, nx, ap);
+    if(!plan) return;
     slope_management_execute(plan, sy, sx);
     slope_management_destroy(plan);
 }
