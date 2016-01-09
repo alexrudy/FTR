@@ -11,23 +11,31 @@ For real-time impelementations, using the C implemetnation is appropriate. For d
 
 Documentation is available at http://alexrudy.github.io/FTR/.
 
-Available Reconstructors
-------------------------
+Python implementation
+---------------------
 
-The python implementation contains implementations of the Fourier Transform Reconstructor and a simple vector-matrix-multiply reconstructor. The C library only contains an implementation of the Fourier Transform Reconstructor, but an example implementation of a vector-matrix-multiply reconstructor can be found in the examples in libFTR.
+Available Reconstructors
+************************
+
+The python implementation contains implementations of the Fourier Transform Reconstructor and a simple vector-matrix-multiply reconstructor.
 
 Additional Features
--------------------
+*******************
 
 Additionally, this library implements the slope-management techniques described by Lisa Poyneer in her dissertation. Slope management helps the Fourier Transform Reconstructor account for the finite aperture discontinuity between opposite edges.
+
+C implementation
+----------------
+
+The C implementation, ``libFTR``, contains the Fourier Transform Reconstructor, an implementation of slope management, and a simple aperture management utility.
 
 Installation
 ------------
 
 With ``pip``, you can install this package::
-    
+
     $ pip install git+https://github.com/alexrudy/ftr.git
-    
+
 
 It requires ``numpy`` to run. ``astropy`` and ``h5py`` are required for optional I/O support for saving and loading filters.
 
