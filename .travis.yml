@@ -92,11 +92,6 @@ install:
     - conda create --yes -n test -c astropy-ci-extras python=$TRAVIS_PYTHON_VERSION
     - source activate test
     
-    # System FTR library
-    - if [[ $SYSTEM_FTR == 'true' ]]; then cd cextern/libFTR/ && make; fi
-    - if [[ $SYSTEM_FTR == 'true' ]]; then cd ../../; fi
-    - if [[ $SYSTEM_FTR == 'true' ]]; then python setup.py build_ext --use-system-ftr --library-dirs $HOME/cextern/libFTR/lib/ saveopts; fi
-
     # CORE DEPENDENCIES
     - if [[ $SETUP_CMD != egg_info ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION pytest pip Cython jinja2; fi
     - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL pytest-xdist; fi
@@ -118,7 +113,12 @@ install:
     # this matplotlib will *not* work with py 3.x, but our sphinx build is
     # currently 2.7, so that's fine
     - if [[ $SETUP_CMD == build_sphinx* ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION Sphinx matplotlib; fi
-
+    
+    # System FTR library
+    - if [[ $SYSTEM_FTR == 'true' ]]; then cd cextern/libFTR/ && make; fi
+    - if [[ $SYSTEM_FTR == 'true' ]]; then cd ../../; fi
+    - if [[ $SYSTEM_FTR == 'true' ]]; then python setup.py build_ext --use-system-ftr --library-dirs $HOME/cextern/libFTR/lib/ saveopts; fi
+    
     # COVERAGE DEPENDENCIES
     - if [[ $SETUP_CMD == 'test --coverage' ]]; then $PIP_INSTALL coverage==3.7.1 coveralls; fi
 
