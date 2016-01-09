@@ -10,4 +10,5 @@ This package implements the Fourier Transform reconstructor in python and c.
     ftr.rst
     slopemanagement.rst
     matrix.rst
+    utils.rst
     fftnormalization.rst
