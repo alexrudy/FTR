@@ -21,7 +21,7 @@ cdef class CFTRBase:
     
     def __cinit__(self, ap, *args, **kwargs):
         """
-        Initialize the c-allocated variables, including interanl numpy arrays.
+        Initialize the c-allocated variables, including internal numpy arrays.
         """
         shape = np.asarray(ap).shape
         self._shape = shape
