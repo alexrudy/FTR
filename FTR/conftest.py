@@ -3,6 +3,7 @@
 # no matter how it is invoked within the source tree.
 
 from astropy.tests.pytest_plugins import *
+import numpy as np
 
 ## Uncomment the following line to treat all DeprecationWarnings as
 ## exceptions
@@ -32,3 +33,10 @@ from astropy.tests.pytest_plugins import *
 #     TESTED_VERSIONS[packagename] = version.version
 # except NameError:   # Needed to support Astropy <= 1.0.0
 #     pass
+
+@pytest.fixture(params=[(0, 0), (0, 3), (3, 1)])
+def shape(request):
+    """Random integer size n."""
+    row_offset, col_offset = request.param
+    nn = (np.random.randint(5, 128) * 2)
+    return (nn + row_offset, nn + col_offset)

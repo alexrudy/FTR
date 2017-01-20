@@ -16,13 +16,6 @@ class ReconstructorTestBase(object):
     
     repr = None
     
-    @pytest.fixture(params=[(0, 0), (0, 3), (3, 1)])
-    def shape(self, request):
-        """Random integer size n."""
-        row_offset, col_offset = request.param
-        nn = (random.randint(5, 128) * 2)
-        return (nn + row_offset, nn + col_offset)
-        
     @pytest.fixture
     def szero(self, shape):
         """Zero slopes"""
