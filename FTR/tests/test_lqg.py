@@ -72,6 +72,10 @@ class TestLQGFilter(FilterTestBase):
         phase_post3 = filter(phase_ft)
         np.testing.assert_allclose(phase_ft, phase_post)
         
+    def test_lqg_benchmark(self, benchmark, filter, phase_ft):
+        """Benchmark reconstructor results."""
+        benchmark.name = benchmark.name + self.cls.__name__
+        phi = benchmark(filter.apply_filter, phase_ft)
 
 class TestCLQG(TestLQGFilter):
     """Test the LQG filter."""

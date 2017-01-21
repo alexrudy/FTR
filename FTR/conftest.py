@@ -34,9 +34,9 @@ import numpy as np
 # except NameError:   # Needed to support Astropy <= 1.0.0
 #     pass
 
-@pytest.fixture(params=[(0, 0), (0, 3), (3, 1)])
+@pytest.fixture(params=[(0, 0), (0, 3), (3, 1)], ids=['64x64', '64x67', '67x65'])
 def shape(request):
     """Random integer size n."""
     row_offset, col_offset = request.param
-    nn = (np.random.randint(5, 128) * 2)
+    nn = 64
     return (nn + row_offset, nn + col_offset)

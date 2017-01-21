@@ -22,6 +22,13 @@ class ReconstructorTestBase(object):
         x = np.zeros(shape, dtype=np.float)
         y = x.copy()
         return (x, y)
+        
+    @pytest.fixture
+    def srandom(self, shape):
+        """Random slopes"""
+        x = np.random.randn(*shape)
+        y = np.random.randn(*shape)
+        return (x, y)
     
     @pytest.fixture
     def phase(self, shape):
@@ -50,3 +57,10 @@ class ReconstructorTestBase(object):
         phi = reconstructor(sx, sy)
         assert np.allclose(phi, 0.0)
         
+    def test_recon_bench(self, benchmark, reconstructor, srandom):
+        """Benchmark reconstructor results."""
+        sx, sy = srandom
+        benchmark.name = benchmark.name + self.cls.__name__
+        phi = benchmark(reconstructor, sx, sy)
+        
+    
