@@ -69,6 +69,8 @@ exclude_patterns.append('_templates')
 rst_epilog += """
 """
 
+autodoc_default_flags = ['members', 'inherited-members']
+
 # -- Project information ------------------------------------------------------
 
 # This does not *have* to match the package name, but typically does
@@ -102,8 +104,8 @@ release = package.__version__
 
 # Please update these texts to match the name of your package.
 html_theme_options = {
-    'logotext1': 'package',  # white,  semi-bold
-    'logotext2': '-template',  # orange, light
+    'logotext1': 'Fourier Transform',  # white,  semi-bold
+    'logotext2': ' Reconstructor',  # orange, light
     'logotext3': ':docs'   # white,  light
     }
 

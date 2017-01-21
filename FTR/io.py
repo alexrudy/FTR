@@ -9,7 +9,14 @@ class IOBase(object):
     """A base class for Input/Output of filters"""
     
     def write(self, filename, **kwargs):
-        """Write to a file with a given name."""
+        """Write to a file with a given name.
+        
+        :param filename: The name of the file to write.
+        :keyword format: The file format to use.
+        
+        The file format will be deduced from the extension if it isn't explicitly provided.
+        
+        """
         format = kwargs.pop('format', os.path.splitext(filename)[1][1:])
         
         function = "__to_{0:s}__".format(format)
@@ -20,7 +27,14 @@ class IOBase(object):
         
     @classmethod
     def read(cls, filename, **kwargs):
-        """Read from a file with a given name."""
+        """Read from a file with a given name.
+        
+        :param filename: The name of the file to read.
+        :keyword format: The file format to use.
+        
+        The file format will be deduced from the extension if it isn't explicitly provided.
+        
+        """
         format = kwargs.pop('format', os.path.splitext(filename)[1][1:])
         
         function = "__from_{0:s}__".format(format)
