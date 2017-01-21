@@ -76,7 +76,6 @@ cdef class CLQGBase:
         lqg_reset(self._filter)
         
     def apply_filter(self, est_ft):
-        est_ft = np.asanyarray(est_ft, dtype=np.complex)
         lqg_apply_filter(self._filter, <complex *>np.PyArray_DATA(est_ft))
         return est_ft
         
