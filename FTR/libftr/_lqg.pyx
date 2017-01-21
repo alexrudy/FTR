@@ -75,11 +75,13 @@ cdef class CLQGBase:
     def reset(self):
         lqg_reset(self._filter)
         
-    def __call__(self, estimate):
-        est_ft = np.asanyarray(estimate, dtype=np.complex)
+    def apply_filter(self, est_ft):
+        est_ft = np.asanyarray(est_ft, dtype=np.complex)
         lqg_apply_filter(self._filter, <complex *>np.PyArray_DATA(est_ft))
         return est_ft
         
-    
+    def __call__(self, est_ft):
+        est_ft = np.asanyarray(est_ft, dtype=np.complex).copy()
+        return self.apply_filter(est_ft)
         
     

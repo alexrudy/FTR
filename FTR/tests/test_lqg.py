@@ -27,6 +27,11 @@ class TestLQGFilter(FilterTestBase):
         """Shape of the filter, accounting for number of layers."""
         return (nlayers,) + shape
         
+    @pytest.fixture(params=[0.1, 0.5, 0.9])
+    def gain(self, request):
+        """A single gain value."""
+        return request.param
+        
     @pytest.fixture
     def gains(self, full_filter_shape):
         """Gains"""
@@ -48,7 +53,25 @@ class TestLQGFilter(FilterTestBase):
         """Generate a random filter for testing."""
         return self.cls(gains, alphas, hp_coeffs)
         
-    
+    def test_gain_only(self, gain, phase_ft, shape):
+        """Test the integrator with a gain only."""
+        filter = self.cls.generate_integrator(gain, 0.0, shape)
+        phase_post = filter(phase_ft)
+        np.testing.assert_allclose(phase_ft * gain, phase_post)
+        phase_post2 = filter(phase_post)
+        np.testing.assert_allclose(phase_ft * (gain ** 2.0), phase_post2)
+        
+    def test_integrator_memory(self, phase_ft, shape):
+        """Test integrator memory."""
+        filter = self.cls.generate_integrator(1.0, 1.0, shape)
+        phase_post = filter(phase_ft)
+        np.testing.assert_allclose(phase_ft, phase_post)
+        phase_post2 = filter(phase_ft)
+        np.testing.assert_allclose(2.0 * phase_ft, phase_post2)
+        filter.reset()
+        phase_post3 = filter(phase_ft)
+        np.testing.assert_allclose(phase_ft, phase_post)
+        
 
 class TestCLQG(TestLQGFilter):
     """Test the LQG filter."""

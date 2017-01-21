@@ -10,7 +10,7 @@ from .io import IOBase
 from .utils import shapestr, create_complex_HDU, read_complex_HDU
 from .libftr._lqg import CLQGBase
 
-__all__ = ['LQGFilter']
+__all__ = ['LQGFilter', 'FastLQGFilter']
 
 class LQGFilter(Filter, IOBase):
     """An LQG Filter container."""
