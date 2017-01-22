@@ -3,9 +3,9 @@ language: python
 python:
     - 2.6
     - 2.7
-    - 3.3
     - 3.4
-    # This is just for "egg_info".  All other builds are explicitly given in the matrix
+    - 3.5
+    - 3.6
 
 # Setting sudo to false opts in to Travis-CI container-based builds.
 sudo: false
@@ -53,7 +53,7 @@ matrix:
         # Try Astropy development version
         - python: 2.7
           env: ASTROPY_VERSION=development SETUP_CMD='test'
-        - python: 3.3
+        - python: 3.5
           env: ASTROPY_VERSION=development SETUP_CMD='test'
 
         # Try older numpy versions
@@ -94,8 +94,8 @@ install:
     - source activate test
     
     # CORE DEPENDENCIES
-    - if [[ $SETUP_CMD != egg_info ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION pytest pip Cython jinja2; fi
-    - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL pytest-xdist pytest-benchmark; fi
+    - if [[ $SETUP_CMD != egg_info ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION pip Cython jinja2; fi
+    - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL pytest pytest-xdist pytest-benchmark; fi
 
     # ASTROPY
     - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == development ]]; then $PIP_INSTALL git+http://github.com/astropy/astropy.git#egg=astropy; fi
