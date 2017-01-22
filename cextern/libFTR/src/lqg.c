@@ -64,9 +64,9 @@ void lqg_destroy(lqg_filter filter)
     if(filter){
         if(filter->ift) free(filter->ift);
         if(filter->ifs) free(filter->ifs);
-        if(filter->holder) free(filter->holder);
-        if(filter->past) free(filter->past);
-        if(filter->end) free(filter->end);
+        if(filter->holder) fftw_free(filter->holder);
+        if(filter->past) fftw_free(filter->past);
+        if(filter->end) fftw_free(filter->end);
     }
     return;
 }
@@ -82,6 +82,8 @@ void lqg_apply_filter(lqg_filter filter, fftw_complex * est_ft)
 {
     size_t l, i;
     fftw_complex *gains, *alphas, *past;
+    
+    //TODO: This could be zeroed in the final for-loop.
     memset(filter->holder, (fftw_complex) 0.0, sizeof(fftw_complex) * filter->nn);
     
     // Compute the integrator for each layer.
