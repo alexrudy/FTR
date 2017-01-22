@@ -69,7 +69,7 @@ exclude_patterns.append('_templates')
 rst_epilog += """
 """
 
-autodoc_default_flags = ['members', 'inherited-members']
+# autodoc_default_flags = ['inherited-members']
 
 # -- Project information ------------------------------------------------------
 
