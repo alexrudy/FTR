@@ -93,20 +93,6 @@ class FTRFilter(collections.namedtuple("_FTRFilter", ["gx", "gy", "name"]), IOBa
                 clsargs['name'] = HDU.header["FNAME"]
         return cls(**clsargs)
 
-@six.add_metaclass(abc.ABCMeta)
-class Filter(object):
-    """Base class for things which further filter phase."""
-    
-    
-    def __call__(self, est_ft):
-        """Callable to directly apply the filter."""
-        return self.apply_filter(est_ft)
-    
-    @abc.abstractmethod
-    def apply_filter(self, est_ft):
-        """Apply the filter."""
-        return est_ft
-
 class FourierTransformReconstructor(Reconstructor):
     """A reconstructor which uses the fourier transform to turn slopes into an
     estiate of the wavefront phase.

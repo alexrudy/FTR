@@ -89,7 +89,7 @@ class FilterTestBase(object):
         
 def test_filter_abc():
     """Test filter is abstract."""
-    from ..ftr import Filter
+    from ..base import Filter
     with pytest.raises(TypeError):
         Filter()
     
