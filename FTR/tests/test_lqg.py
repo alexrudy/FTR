@@ -74,6 +74,7 @@ class TestLQGFilter(FilterTestBase):
         phase_post3 = filter(phase_ft)
         np.testing.assert_allclose(phase_ft, phase_post)
         
+    @pytest.mark.skipif("sys.version_info < (2,7)")
     def test_lqg_benchmark(self, benchmark, filter, phase_ft):
         """Benchmark reconstructor results."""
         benchmark.name = benchmark.name + self.cls.__name__

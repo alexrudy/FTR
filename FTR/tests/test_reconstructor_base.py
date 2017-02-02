@@ -57,6 +57,7 @@ class ReconstructorTestBase(object):
         phi = reconstructor(sx, sy)
         assert np.allclose(phi, 0.0)
         
+    @pytest.mark.skipif("sys.version_info < (2,7)")
     def test_recon_bench(self, benchmark, reconstructor, srandom):
         """Benchmark reconstructor results."""
         sx, sy = srandom
