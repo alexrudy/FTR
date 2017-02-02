@@ -45,7 +45,7 @@ matrix:
         #   env: SETUP_CMD='test --coverage'
         
         - python: 2.6
-          env: NUMPY_VERSION=1.10
+          env: NUMPY_VERSION=1.9
         
         # Check for sphinx doc build warnings - we do this first because it
         # may run for a long time
@@ -63,8 +63,6 @@ matrix:
           env: NUMPY_VERSION=1.8 SETUP_CMD='test'
         - python: 2.7
           env: NUMPY_VERSION=1.7 SETUP_CMD='test'
-        - python: 2.7
-          env: NUMPY_VERSION=1.6 SETUP_CMD='test'
 
     allow_failures:
       # Try with external libraries
