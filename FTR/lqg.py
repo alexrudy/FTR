@@ -86,7 +86,7 @@ class LQGBase(Filter, IOBase):
         """Read an LQG filter from an HDF5 file."""
         import h5py
         with h5py.File(file, kwargs.pop('mode', 'r')) as file:
-            group = file.get('LQG Filter', file.values()[0])
+            group = file.get('LQG Filter', next(file.values()))
             args = [group[name][...] for name in [ "gains", "alphas", "highpass_coefficients" ]]
         return cls(*args)
         
