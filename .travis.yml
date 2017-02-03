@@ -79,7 +79,7 @@ install:
     - git clone git://github.com/astropy/ci-helpers.git
     - source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
     - pip install --no-use-wheel pyzmq
-    - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then pip install --upgrade pytest; fi
+    - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then pip install --ignore-installed --upgrade pytest; fi
     
     # System FTR library
     - if [[ $SYSTEM_FTR == 'true' ]]; then cd cextern/libFTR/ && make; fi
