@@ -6,7 +6,7 @@ Fourier domain filters for use with FTR.
 from __future__ import absolute_import
 import numpy as np
 
-from .ftr import Filter
+from .base import Filter
 from .io import IOBase
 from .utils import create_complex_HDU, read_complex_HDU, shapestr
 

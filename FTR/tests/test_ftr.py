@@ -6,6 +6,7 @@ import pytest
 import numpy as np
 
 from .test_reconstructor_base import ReconstructorTestBase
+from .test_io import IOTestBase
 from .. import ftr
 from ..utils import circle_aperture, remove_piston, complexmp
 
@@ -13,6 +14,17 @@ from ..utils import circle_aperture, remove_piston, complexmp
 def filter_name(request):
     """An FTR filter name."""
     return request.param
+
+class TestFTRFilter(IOTestBase):
+    """Test FTR Filter."""
+    
+    cls = ftr.FTRFilter
+    
+    @pytest.fixture
+    def obj(self, filter_name, shape):
+        """FTR filter object."""
+        return ftr.FourierTransformReconstructor.get(filter_name, shape)
+        
 
 class FourierTransformReconstructorTestBase(ReconstructorTestBase):
     """Test the Fourier Transform Reconstructor."""

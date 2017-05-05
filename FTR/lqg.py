@@ -4,79 +4,70 @@ Implementation of the LQG reconstructor in python.
 """
 
 import numpy as np
+import abc
 
-from .ftr import Filter
+from .base import Filter
 from .io import IOBase
 from .utils import shapestr, create_complex_HDU, read_complex_HDU
 from .libftr._lqg import CLQGBase
 
-__all__ = ['LQGFilter']
+__all__ = ['LQGFilter', 'FastLQGFilter']
 
-class LQGFilter(Filter, IOBase):
-    """An LQG Filter container."""
+def _validate_lqg_arguments(gains, alphas, hp_coeffs, dtype=np.complex):
+    """Validate LQG arguments"""
+    gains = np.asanyarray(gains, dtype=dtype)
+    alphas = np.asanyarray(alphas, dtype=dtype)
+    hp_coeffs = np.asanyarray(hp_coeffs, dtype=dtype)
+    
+    if not gains.ndim == 3:
+        raise ValueError("Gains must have 3 dimensions. gains.ndim={0:d} gains.shape={1!r}".format(gains.ndim, gains.shape))
+    nlayers = gains.shape[0]
+    shape = gains.shape[1:]
+    
+    if gains.shape != (nlayers,) + shape:
+        raise ValueError("Shape mismatch for {0:s}, got {1!r} expected {2!r}".format('gains', gains.shape, (nlayers,) + shape))
+    if alphas.shape != (nlayers,) + shape:
+        raise ValueError("Shape mismatch for {0:s}, got {1!r} expected {2!r}".format('alphas', alphas.shape, (nlayers,) + shape))
+    if hp_coeffs.shape != shape:
+        raise ValueError("Shape mismatch for {0:s}, got {1!r} expected {2!r}".format('hp_coeffs', hp_coeffs.shape, shape))
+    return gains, alphas, hp_coeffs
+    
+class LQGBase(Filter, IOBase):
+    """An LQG Filter container which specifies the interface."""
     def __init__(self, gains, alphas, hp_coeffs):
-        super(LQGFilter, self).__init__()
-        gains = np.asanyarray(gains, dtype=np.complex)
-        if not gains.ndim == 3:
-            raise ValueError("Gains must have 3 dimensions. gains.ndim={0:d} gains.shape={1!r}".format(gains.ndim, gains.shape))
-        self._nlayers = gains.shape[0]
-        self._shape = gains.shape[1:]
-        self._gains = gains
-        self._alphas = np.asanyarray(alphas, dtype=np.complex)
-        self._hp_coeffs = np.asanyarray(hp_coeffs, dtype=np.complex)
-        
-        try:
-            assert self._gains.shape == (self._nlayers,) + self._shape, "Gains"
-            assert self._alphas.shape == (self._nlayers,) + self._shape, "Alphas"
-        except AssertionError:
-            raise ValueError("Shape mismatch for {0:s}".format(str(e)))
-        
+        super(LQGBase, self).__init__()
         self.reset()
         
+    @abc.abstractmethod
     def reset(self):
-        """Reset the filter memory."""
-        self._memory_end = np.zeros(self.shape, dtype=np.complex)
-        self._memory_past = np.zeros((self.nlayers,) + self.shape, dtype=np.complex)
-        
-    def apply_filter(self, est_ft):
-        """Apply the Kalman Filter."""
-        layer_update = est_ft[None,...] * self.gains + self._memory_past * self.alphas
-        # Note that we put the [None,...] into est_ft to add an axis along the front. 
-        # This new axis corresponds to the number of layers in a given Kalman Filter.
-        
-        est_ft = layer_update.sum(axis=0) - self._memory_end * self.highpass_coefficients
-        # We collapse layer_update along the number of layers axis.
-        
-        # At the end, we re-insert data into its original holders.
-        self._memory_end[...] = est_ft
-        self._memory_past[...] = layer_update
-        return est_ft
+        """Reset the filter."""
+        pass
         
     def __repr__(self):
         """A string representation for this filter."""
         return "<{0} nlayers={1:d} shape={2:s}>".format(self.__class__.__name__, self.nlayers, shapestr(self.shape))
-        
-    @property
+    
+    @abc.abstractproperty
     def nlayers(self):
         """Number of layers."""
         return self._nlayers
     
-    @property
+    @abc.abstractproperty
     def shape(self):
         """Shape of the filter, without the layer axis."""
         return self._shape
     
-    @property
+    @abc.abstractproperty
     def gains(self):
         """Filter gains."""
         return self._gains
         
-    @property
+    @abc.abstractproperty
     def alphas(self):
         """Filter Alphas"""
         return self._alphas
         
-    @property
+    @abc.abstractproperty
     def highpass_coefficients(self):
         """High-pass coefficients."""
         return self._hp_coeffs
@@ -95,7 +86,7 @@ class LQGFilter(Filter, IOBase):
         """Read an LQG filter from an HDF5 file."""
         import h5py
         with h5py.File(file, kwargs.pop('mode', 'r')) as file:
-            group = file['LQG Filter']
+            group = file.get('LQG Filter', next(iter(file.values())))
             args = [group[name][...] for name in [ "gains", "alphas", "highpass_coefficients" ]]
         return cls(*args)
         
@@ -147,9 +138,89 @@ class LQGFilter(Filter, IOBase):
         alphas = np.float(alpha) * np.ones((1,) + shape, dtype=np.complex)
         hp_coeffs = np.zeros(shape, dtype=np.complex)
         return cls(gains, alphas, hp_coeffs)
-    
 
-class FastLQGFilter(CLQGBase, LQGFilter):
+class LQGFilter(LQGBase):
+    """An LQG Filter container."""
+    
+    def __init__(self, gains, alphas, hp_coeffs):
+        gains, alphas, hp_coeffs = _validate_lqg_arguments(gains, alphas, hp_coeffs, dtype=np.complex)
+        self._nlayers = gains.shape[0]
+        self._shape = gains.shape[1:]
+        self._gains = gains
+        self._alphas = alphas
+        self._hp_coeffs = hp_coeffs
+        super(LQGFilter, self).__init__(gains, alphas, hp_coeffs)
+        
+    
+    def reset(self):
+        """Reset the filter memory."""
+        self._memory_end = np.zeros(self.shape, dtype=np.complex)
+        self._memory_past = np.zeros((self.nlayers,) + self.shape, dtype=np.complex)
+        
+    def apply_filter(self, est_ft):
+        """Apply the Kalman Filter."""
+        layer_update = est_ft[None,...] * self.gains + self._memory_past * self.alphas
+        # Note that we put the [None,...] into est_ft to add an axis along the front. 
+        # This new axis corresponds to the number of layers in a given Kalman Filter.
+        
+        est_ft = layer_update.sum(axis=0) - self._memory_end * self.highpass_coefficients
+        # We collapse layer_update along the number of layers axis.
+        
+        # At the end, we re-insert data into its original holders.
+        self._memory_end[...] = est_ft
+        self._memory_past[...] = layer_update
+        return est_ft
+    
+    @property
+    def nlayers(self):
+        """Number of layers."""
+        return self._nlayers
+    
+    @property
+    def shape(self):
+        """Shape of the filter, without the layer axis."""
+        return self._shape
+    
+    @property
+    def gains(self):
+        """Filter gains."""
+        return self._gains
+        
+    @property
+    def alphas(self):
+        """Filter Alphas"""
+        return self._alphas
+        
+    @property
+    def highpass_coefficients(self):
+        """High-pass coefficients."""
+        return self._hp_coeffs
+
+class FastLQGFilter(CLQGBase, LQGBase):
     """A c-based implementation of the LQG filter."""
-    pass
+    
+    @property
+    def nlayers(self):
+        """Number of layers."""
+        return self._nlayers
+    
+    @property
+    def shape(self):
+        """Shape of the filter, without the layer axis."""
+        return self._shape
+    
+    @property
+    def gains(self):
+        """Filter gains."""
+        return self._gains
+        
+    @property
+    def alphas(self):
+        """Filter Alphas"""
+        return self._alphas
+        
+    @property
+    def highpass_coefficients(self):
+        """High-pass coefficients."""
+        return self._hp_coefficients
 

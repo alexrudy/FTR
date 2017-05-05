@@ -32,3 +32,16 @@ class Reconstructor(object):
         
         """
         return self.reconstruct(xs, ys)
+
+@six.add_metaclass(abc.ABCMeta)
+class Filter(object):
+    """Base class for things which further filter phase, in the fourier domain."""
+    
+    def __call__(self, est_ft):
+        """Callable to directly apply the filter."""
+        return self.apply_filter(est_ft)
+    
+    @abc.abstractmethod
+    def apply_filter(self, est_ft):
+        """Apply the filter."""
+        return est_ft

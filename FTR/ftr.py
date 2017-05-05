@@ -30,33 +30,68 @@ from astropy.utils import lazyproperty
 
 # Local imports
 from .base import Reconstructor
+from .io import IOBase
 from .libftr._ftr import CFTRBase
 from .utils import (complexmp, ignoredivide, remove_piston, remove_tiptilt, 
-    fftgrid, shapegrid, shapestr, apply_tiptilt)
+    fftgrid, shapegrid, shapestr, apply_tiptilt, create_complex_HDU,
+    read_complex_HDU)
 
 __all__ = ['FTRFilter', 'FourierTransformReconstructor', 'FastFTReconstructor', 'mod_hud_filter', 'fried_filter', 'ideal_filter', 'inplace_filter', 'hud_filter']
 
-FTRFilter = collections.namedtuple("FTRFilter", ["gx", "gy", "name"])
-if six.PY3: # pragma: py3
-    FTRFilter.__doc__ = """
+class FTRFilter(collections.namedtuple("_FTRFilter", ["gx", "gy", "name"]), IOBase):
+    """
     FTRFilter(gx,gy,name)
 
     Tuple collection of filter values.
     """
-
-@six.add_metaclass(abc.ABCMeta)
-class Filter(object):
-    """Base class for things which further filter phase."""
     
+    def __to_hdf5__(self, filename, **kwargs):
+        """Write an HDF5 file."""
+        import h5py
+        with h5py.File(filename, kwargs.pop('mode', 'w')) as file:
+            group = file.create_group("FTR Filter")
+            group.attrs['name'] = self.name
+            for g in ('gx', 'gy'):
+                dataset = group.create_dataset(g, data=getattr(self, g), **kwargs)
+                dataset.attrs['description'] = 'Filter {0:s} component'.format(g.lstrip('g'))
+        
+    @classmethod
+    def __from_hdf5__(cls, filename, **kwargs):
+        """Load a filter from an HDF5 file."""
+        import h5py
+        clsargs = {}
+        with h5py.File(filename, kwargs.pop('mode', 'r')) as file:
+            group = file['FTR Filter']
+            clsargs['name'] = group.attrs['name']
+            for name, dataset in group.items():
+                clsargs[name] = dataset[...]
+        return cls(**clsargs)
     
-    def __call__(self, est_ft):
-        """Callable to directly apply the filter."""
-        return self.apply_filter(est_ft)
+    def __to_fits__(self, filename, **kwargs):
+        """Write the FITS file."""
+        from astropy.io import fits
+        HDUs = []
+        for g in ('gx', 'gy'):
+            gHDU = create_complex_HDU(getattr(self,g))
+            gHDU.name = g.upper()
+            gHDU.header['GAXIS'] = g.lstrip('g').upper()
+            gHDU.header['DATA'] = (g.upper(), "Filter {0:s} component".format(g.lstrip('g')))
+            gHDU.header['FNAME'] = (self.name, "Filter Name")
+            HDUs.append(gHDU)
+        fits.HDUList([fits.PrimaryHDU(HDUs[0].data, HDUs[0].header)]+HDUs[1:]).writeto(filename, **kwargs)
     
-    @abc.abstractmethod
-    def apply_filter(self, est_ft):
-        """Apply the filter."""
-        return est_ft
+    @classmethod
+    def __from_fits__(cls, filename, **kwargs):
+        """Read from a FITS file."""
+        from astropy.io import fits
+        clsargs = {}
+        with fits.open(filename, **kwargs) as HDUs:
+            for HDU in HDUs:
+                gdata = read_complex_HDU(HDU)
+                gaxis = HDU.header.get('GAXIS')
+                clsargs['g{0:s}'.format(gaxis.lower())] = gdata
+                clsargs['name'] = HDU.header["FNAME"]
+        return cls(**clsargs)
 
 class FourierTransformReconstructor(Reconstructor):
     """A reconstructor which uses the fourier transform to turn slopes into an
@@ -645,8 +680,8 @@ def hud_filter(shape):
     gy = np.exp(1j * fy) - 1.0
     
     #TODO: Check that this nyquist nulling is correct.
-    # gx[:,nx/2] = 0.0
-    # gy[ny/2,:] = 0.0
+    # gx[:,nx//2] = 0.0
+    # gy[ny//2,:] = 0.0
     
     #TODO: Check for other null points in the filter.
     

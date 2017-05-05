@@ -8,29 +8,26 @@ np.import_array()
 
 cdef class CLQGBase:
     
+    cdef readonly int _nlayers
+    cdef readonly tuple _shape
+    cdef lqg_filter _filter
+    cdef readonly np.ndarray _aperture, _gains, _alphas, _hp_coefficients
+    
+    cdef complex * _est_ft_internal_cy
+    cdef np.ndarray _est_ft_internal_py
+    
     def __cinit__(self, gains, alphas, hp_coefficients):
         
         # Perform the same initialization checks that python would have done
         # for all of the arrays. These may occur twice (once in __init__),
         # but since this happens first, and could cause problems in the c
         # library, we duplicated it here.
-        gains = np.asanyarray(gains, dtype=np.complex)
-        alphas = np.asanyarray(alphas, dtype=np.complex)
-        hp_coefficients = np.asanyarray(hp_coefficients, dtype=np.complex)
+        from ..lqg import _validate_lqg_arguments
+        gains, alphas, hp_coefficients = _validate_lqg_arguments(gains, alphas, hp_coefficients)
         
         self._shape = gains.shape[1:]
-        self._nlayer = gains.shape[0]
+        self._nlayers = gains.shape[0]
         
-        if gains.ndim != 3:
-            raise ValueError("Gains must have ndim=3, got ndim={0:d}".format(gains.ndim))
-        
-        try:
-            assert gains.shape == (self._nlayer,) + self._shape, "Gains"
-            assert alphas.shape == (self._nlayer,) + self._shape, "Alphas"
-            assert hp_coefficients.shape == self._shape, "High-pass coefficients"
-        except AssertionError as e:
-            raise ValueError("Shape mismatch for {0:s}".format(str(e)))
-            
         # Now we can set up the attributes, retaining a reference to the filter
         # components so that we own the underlying memory.
         self._gains = gains
@@ -38,7 +35,7 @@ cdef class CLQGBase:
         self._hp_coefficients = hp_coefficients
         
         # Finally, generate the filter itself. It is an opaque pointer.
-        self._filter = lqg_new_filter(self._nlayer, self._shape[0], self._shape[1], 
+        self._filter = lqg_new_filter(self._nlayers, self._shape[0], self._shape[1], 
             <complex *>np.PyArray_DATA(self._gains), <complex *>np.PyArray_DATA(self._alphas), 
             <complex *>np.PyArray_DATA(self._hp_coefficients))
         
@@ -48,11 +45,21 @@ cdef class CLQGBase:
     def reset(self):
         lqg_reset(self._filter)
         
-    def __call__(self, estimate):
-        est_ft = np.asanyarray(estimate, dtype=np.complex)
+    def apply_filter(self, est_ft):
         lqg_apply_filter(self._filter, <complex *>np.PyArray_DATA(est_ft))
         return est_ft
         
-    
+    def __call__(self, est_ft):
+        est_ft = np.asanyarray(est_ft, dtype=np.complex).copy()
+        return self.apply_filter(est_ft)
         
+    def _preload(self, est_ft):
+        """Preload a C-buffer for data processing."""
+        self._est_ft_internal_py = np.asanyarray(est_ft, dtype=np.complex).copy()
+        self._est_ft_internal_cy = <complex *>np.PyArray_DATA(self._est_ft_internal_py)
+    
+    def _execute(self):
+        """Execute wiht a pre-loaded C buffer."""
+        lqg_apply_filter(self._filter, self._est_ft_internal_cy)
+    
     

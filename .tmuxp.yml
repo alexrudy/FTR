@@ -1,0 +1,14 @@
+session_name: FTR
+start_directory: .
+windows:
+- panes:
+  - shell_command:
+    - workon -n FTR
+  start_directory: ~/Development/FTR
+  window_name: src
+- panes:
+  - shell_command:
+    - workon -n FTR
+    - jupyter notebook --no-browser --port=8091
+  start_directory: ~/Development/FTR
+  window_name: ipnb

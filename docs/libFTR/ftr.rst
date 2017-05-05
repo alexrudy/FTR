@@ -1,6 +1,8 @@
 .. highlight:: c
 .. default-domain:: c
 
+.. _libftr-ftr:
+
 Fourier Transform Reconstructor in libFTR
 *****************************************
 
@@ -16,10 +18,18 @@ If you have a pointer to x slopes, a pointer to y slopes, and you want to create
     #include <ftr.h>
     ftr_plan recon;
     int nx = 10, ny = 10;
-    double * sx, * sy, * est;
+    double *sx, *sy, *est;
+    fftw_complex *gx, *gy;
+    
+    // Destination arrays.
     est = fftw_malloc(sizeof(double) * nx * ny);
     sx = fftw_malloc(sizeof(double) * nx * ny);
     sy = fftw_malloc(sizeof(double) * nx * ny);
+    
+    // Generate the filters.
+    gx = fftw_malloc(sizeof(fftw_complex) * nx * ny);
+    gy = fftw_malloc(sizeof(fftw_complex) * nx * ny);
+    // You need to provide values for gx and gy.
 
     // Set up the reconstructor
     recon = ftr_plan_reconstructor(nx, ny, sx, sy, est);
@@ -33,9 +43,9 @@ If you have a pointer to x slopes, a pointer to y slopes, and you want to create
     // Free allocated memory at the end.
     ftr_plan_destroy(recon);
 
-At the end of this code snippet, the reconstructed phase is always stored in the ``est`` variable defined above, and the operation is in place. Subsequent reconstructions should replace the contents of ``sx`` and ``sy`` rather than allocating a new reconstructor via intfunc:`ftr_plan_reconstructor`.
+At the end of this code snippet, the reconstructed phase is always stored in the ``est`` variable defined above, and the operation is in place. Subsequent reconstructions should replace the contents of ``sx`` and ``sy`` rather than allocating a new reconstructor via :func:`ftr_plan_reconstructor`.
 
-To change the filter used by a particular inttype:`ftr_plan`, it is safe to call intfunc:`ftr_set_filter`.
+To change the filter used by a particular :type:`ftr_plan`, it is safe to call :func:`ftr_set_filter`.
 
 Fourier Transform Reconstructor API
 ===================================
@@ -51,51 +61,51 @@ Creating and destroying plans
 
 .. function:: ftr_plan ftr_plan_reconstructor(int nx, int ny, double *sx, double *sy, double *est)
 
-    This function allocates a inttype:`ftr_plan` struct with the correct members.
+    This function allocates a :type:`ftr_plan` struct with the correct members.
 
     :param int nx: The number of points in the x direction.
     :param int ny: The number of points in the y direction.
     :param double sx: A pointer to the x slope data.
     :param double sy: A pointer to the y slope data.
     :param double est: A pointer to the estimated phase output data.
-    :returns: A inttype:`ftr_plan` with allocated data arrays.
+    :returns: A :type:`ftr_plan` with allocated data arrays.
 
     This function also serves to initialize the FFTW plans which will be used to perform the reconstruction.
 
 .. function:: void ftr_set_filter(ftr_plan recon, fftw_complex *gx, fftw_complex *gy)
 
-    This function sets the filter in the inttype:`ftr_plan` struct to point to the provided filter arrays. It also computes the filter denominator.
+    This function sets the filter in the :type:`ftr_plan` struct to point to the provided filter arrays. It also computes the filter denominator.
 
-    :param ftr_plan recon: The inttype:`ftr_plan` struct for this reconstructor.
+    :param ftr_plan recon: The :type:`ftr_plan` struct for this reconstructor.
     :param complex gx: The x spatial filter.
     :param complex gy: The y spatial filter.
 
-    Changing the values in ``gx`` and ``gy`` after calling this function will leave the incorrect denominator stored in the inttype:`reconstructor` struct.
+    Changing the values in ``gx`` and ``gy`` after calling this function will leave the incorrect denominator stored in the :type:`reconstructor` struct.
 
 .. function:: void ftr_destroy(ftr_plan recon)
 
     Destroy an FTR plan, deallocating memory as necessary.
 
-    :param ftr_plan recon: The inttype:`ftr_plan` to deallocate.
+    :param ftr_plan recon: The :type:`ftr_plan` to deallocate.
 
 Reconstruction, with and without callbacks
 ------------------------------------------
 
 .. function:: void ftr_reconstruct(ftr_plan recon)
 
-    Perform the reconstruction. Reconstruction results are stored in the data assigned to ``est`` with intfunc:`ftr_plan_reconstructor`.
+    Perform the reconstruction. Reconstruction results are stored in the data assigned to ``est`` with :func:`ftr_plan_reconstructor`.
 
-    :param ftr_plan recon: The inttype:`ftr_plan` struct for this reconstructor.
+    :param ftr_plan recon: The :type:`ftr_plan` struct for this reconstructor.
 
 .. type:: ftr_estimate_callback
 
-    This is the callback type for functions which can serve as callbacks in intfunc:`ftr_reconstruct_with_callback`. The callback signature must match ``void (*ftr_estimate_callback)(void * data, fftw_complex * est_ft)``. The inclusion of the ``void * data`` pointer allows for an arbitrary structure of user data to be passed in to the Fourier Transform Reconstructor.
+    This is the callback type for functions which can serve as callbacks in :func:`ftr_reconstruct_with_callback`. The callback signature must match ``void (*ftr_estimate_callback)(void * data, fftw_complex * est_ft)``. The inclusion of the ``void * data`` pointer allows for an arbitrary structure of user data to be passed in to the Fourier Transform Reconstructor.
 
 .. function:: void ftr_reconstruct_with_callback(ftr_plan recon, ftr_estimate_callback callback, void * data)
 
-    Perform the reconstruction, and use a callback to adjust the fourier transform of the estimate. See inttype:`ftr_estimate_callback` for a descritpion of the callback function required to apply additional filters to the fourier transform of the estimate.
+    Perform the reconstruction, and use a callback to adjust the fourier transform of the estimate. See :type:`ftr_estimate_callback` for a descritpion of the callback function required to apply additional filters to the fourier transform of the estimate.
 
-    :param ftr_plan recon: The inttype:`ftr_plan` for this reconstructor.
+    :param ftr_plan recon: The :type:`ftr_plan` for this reconstructor.
     :param ftr_estimate_callback callback: A callback function to be applied to the fourier transform of the phase estimate.
     :param void* data: A pointer to data required by `callback`.
 
@@ -106,27 +116,32 @@ Individual reconstruction steps
 
     Perform only the forward FFTs to transform the slopes into the Fourier domain.
 
-    :param ftr_plan recon: The inttype:`ftr_plan` to use for the forward transform.
+    :param ftr_plan recon: The :type:`ftr_plan` to use for the forward transform.
 
 .. function:: void ftr_apply_filter(ftr_plan recon)
 
     Only apply the filter to the transformed slopes, to estimate the phase.
 
-    :param ftr_plan recon: The inttype:`ftr_plan` to use to apply the filter.
+    :param ftr_plan recon: The :type:`ftr_plan` to use to apply the filter.
 
 .. function:: void ftr_backward_transform(ftr_plan recon)
 
     Perform the backward FFT to transform the Fourier mode estimate of the phase into a real phase.
 
-    :param ftr_plan recon: The inttype:`ftr_plan` to use for the backward transform.
+    :param ftr_plan recon: The :type:`ftr_plan` to use for the backward transform.
 
 .. function:: void ftr_apply_callback(ftr_plan recon, ftr_estimate_callback callback, void * data)
 
     Apply a callback function to the estimated phase in the Fourier domain.
 
-    :param ftr_plan recon: The inttype:`ftr_plan` for this reconstructor.
+    :param ftr_plan recon: The :type:`ftr_plan` for this reconstructor.
     :param ftr_estimate_callback callback: A callback function to be applied to the fourier transform of the phase estimate.
     :param void* data: A pointer to data required by `callback`.
+    
+.. type:: ftr_estimate_callback
+    
+    A function pointer type for ftr estimator callbacks. Conformant functions
+    should have the signature ``void callback(void * data, const int ny, const int nx, fftw_complex * est_ft);``
 
 FFTW Halfcomplex Format Utilties
 ================================

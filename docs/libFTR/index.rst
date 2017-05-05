@@ -17,5 +17,6 @@ The design is meant to mimic the design of FFTW plans. This was chosen because F
     :maxdepth: 2
     
     ftr
+    lqg
     slopemanagement
     aperture

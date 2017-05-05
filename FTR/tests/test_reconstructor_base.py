@@ -16,18 +16,18 @@ class ReconstructorTestBase(object):
     
     repr = None
     
-    @pytest.fixture(params=[(0, 0), (0, 3), (3, 1)])
-    def shape(self, request):
-        """Random integer size n."""
-        row_offset, col_offset = request.param
-        nn = (random.randint(5, 128) * 2)
-        return (nn + row_offset, nn + col_offset)
-        
     @pytest.fixture
     def szero(self, shape):
         """Zero slopes"""
         x = np.zeros(shape, dtype=np.float)
         y = x.copy()
+        return (x, y)
+        
+    @pytest.fixture
+    def srandom(self, shape):
+        """Random slopes"""
+        x = np.random.randn(*shape)
+        y = np.random.randn(*shape)
         return (x, y)
     
     @pytest.fixture
@@ -57,3 +57,11 @@ class ReconstructorTestBase(object):
         phi = reconstructor(sx, sy)
         assert np.allclose(phi, 0.0)
         
+    @pytest.mark.skipif("sys.version_info < (2,7)")
+    def test_recon_bench(self, benchmark, reconstructor, srandom):
+        """Benchmark reconstructor results."""
+        sx, sy = srandom
+        benchmark.name = benchmark.name + self.cls.__name__
+        phi = benchmark(reconstructor, sx, sy)
+        
+    
