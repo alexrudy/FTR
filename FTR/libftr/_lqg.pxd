@@ -24,9 +24,12 @@ cdef extern from "lqg.h":
 
 cdef class CLQGBase:
     
-    cdef int _nlayer
-    cdef tuple _shape
+    cdef readonly int _nlayers
+    cdef readonly tuple _shape
     cdef lqg_filter _filter
-    cdef np.ndarray _aperture, _gains, _alphas, _hp_coefficients
+    cdef readonly np.ndarray _aperture, _gains, _alphas, _hp_coefficients
+
+    cdef complex * _est_ft_internal_cy
+    cdef np.ndarray _est_ft_internal_py
     
     

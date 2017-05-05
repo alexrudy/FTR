@@ -8,14 +8,6 @@ np.import_array()
 
 cdef class CLQGBase:
     
-    cdef readonly int _nlayers
-    cdef readonly tuple _shape
-    cdef lqg_filter _filter
-    cdef readonly np.ndarray _aperture, _gains, _alphas, _hp_coefficients
-    
-    cdef complex * _est_ft_internal_cy
-    cdef np.ndarray _est_ft_internal_py
-    
     def __cinit__(self, gains, alphas, hp_coefficients):
         
         # Perform the same initialization checks that python would have done
