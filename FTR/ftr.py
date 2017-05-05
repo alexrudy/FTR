@@ -665,8 +665,8 @@ def mod_hud_filter(shape):
     gx = np.exp(1j*fy/2)*(np.exp(1j*fx) - 1)
     gy = np.exp(1j*fx/2)*(np.exp(1j*fy) - 1)
 
-    gx[ny/2,:] = 0.0
-    gy[:,nx/2] = 0.0
+    gx[ny//2,:] = 0.0
+    gy[:,nx//2] = 0.0
     
     return FTRFilter(gx, gy, "mod_hud")
 
