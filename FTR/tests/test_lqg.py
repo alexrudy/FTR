@@ -77,7 +77,9 @@ class TestLQGFilter(FilterTestBase):
     @pytest.mark.skipif("sys.version_info < (2,7)")
     def test_lqg_benchmark(self, benchmark, filter, phase_ft):
         """Benchmark reconstructor results."""
-        benchmark.name = benchmark.name + self.cls.__name__
+        benchmark.name = benchmark.name[5:]
+        if self.cls.__name__.startswith("Fast"):
+            benchmark.name = benchmark.name + "Cython"
         
         if hasattr(filter, '_preload') and hasattr(filter, '_execute'):
             phi = benchmark.pedantic(filter._execute, setup=functools.partial(filter._preload, phase_ft), rounds=10000)
