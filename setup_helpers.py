@@ -7,10 +7,43 @@ import sys
 import os
 import glob
 import copy
+import inspect
 
-__all__ = ['get_external_libraries', 'get_libFTR_extensions']
+
+__all__ = ['get_external_libraries', 'get_libFTR_extensions', 'get_package_data']
 
 library_name = "libFTR"
+
+pjoin = os.path.join
+HERE = os.path.dirname(__file__)
+BASE = pjoin("..", HERE)
+
+def get_parent_module():
+    """Get parent filename."""
+    frame = inspect.currentframe()
+    module = inspect.getmodule(frame)
+    while module.__name__ == __name__:
+        if frame.f_back is None:
+            raise ValueError("Fell off the top of the stack.")
+        frame = frame.f_back
+        module = inspect.getmodule(frame)
+        if module.__name__.split(".")[0] == 'astropy_helpers':
+            try:
+                module = frame.f_locals['setuppkg']
+            except KeyError:
+                raise ValueError("Got to astropy helpers. Problem.")
+            else:
+                break
+    return module
+
+def get_parent_filename():
+    """Get parent module filename."""
+    return os.path.relpath(get_parent_module().__file__)
+
+def get_package_data():
+    """A basic get-package-data."""
+    package = ".".join(get_parent_module().__name__.split(".")[:-1])
+    return { package: ['*.pxd', '*.h'] }
 
 def get_external_libraries():
     return ['ftr']
