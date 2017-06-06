@@ -6,7 +6,7 @@ cdef extern from "complex.h":
 cdef extern from "fftw3.h":
     pass
 
-cdef extern from "lqg.h":
+cdef extern from "lqg.h" nogil:
     
     cdef struct lqg_filter_s:
         pass
