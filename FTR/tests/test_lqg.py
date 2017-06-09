@@ -19,6 +19,15 @@ class TestLQGFilter(FilterTestBase):
     
     repr = "<LQGFilter nlayers=... shape={shape}>"
     
+    @pytest.fixture(params=[(0, 0), (0, 3), (3, 1), (0, None)], ids=['64x64', '64x67', '67x65', '64x64-1D'])
+    def shape(self, request):
+        """Random integer size n."""
+        row_offset, col_offset = request.param
+        nn = 64
+        if col_offset is None:
+            return ((nn * nn) + row_offset,)
+        return (nn + row_offset, nn + col_offset)
+    
     @pytest.fixture(params=[1,3,8])
     def nlayers(self, request):
         """Return the number of layers."""
@@ -73,11 +82,16 @@ class TestLQGFilter(FilterTestBase):
         filter.reset()
         phase_post3 = filter(phase_ft)
         np.testing.assert_allclose(phase_ft, phase_post)
+    
+    def test_kalman_formulation(self, phase_ft, shape):
+        """Test a Kalman formulation."""
+        filter = self.cls.generate_kalman_filter(0.6, 0.995, shape)
+        phase_post = filter(phase_ft)
         
     @pytest.mark.skipif("sys.version_info < (2,7)")
     def test_lqg_benchmark(self, benchmark, filter, phase_ft):
         """Benchmark reconstructor results."""
-        benchmark.name = benchmark.name[5:]
+        benchmark.name = benchmark.name.replace("test_lqg_benchmark", "LQG")
         if self.cls.__name__.startswith("Fast"):
             benchmark.name = benchmark.name + "Cython"
         

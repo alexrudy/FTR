@@ -41,7 +41,7 @@ class FilterTestBase(object):
     cls = None
     
     repr = None
-        
+    
     @pytest.fixture
     def pzero(self, shape):
         """Zero slopes"""

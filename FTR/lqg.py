@@ -19,8 +19,8 @@ def _validate_lqg_arguments(gains, alphas, hp_coeffs, dtype=np.complex):
     alphas = np.asanyarray(alphas, dtype=dtype)
     hp_coeffs = np.asanyarray(hp_coeffs, dtype=dtype)
     
-    if not gains.ndim == 3:
-        raise ValueError("Gains must have 3 dimensions. gains.ndim={0:d} gains.shape={1!r}".format(gains.ndim, gains.shape))
+    if not gains.ndim >= 2:
+        raise ValueError("Gains must have more than 1 dimension. gains.ndim={0:d} gains.shape={1!r}".format(gains.ndim, gains.shape))
     nlayers = gains.shape[0]
     shape = gains.shape[1:]
     
@@ -75,8 +75,8 @@ class LQGBase(Filter, IOBase):
     def __to_hdf5__(self, file, **kwargs):
         """Write to a HDF5 file."""
         import h5py
-        with h5py.File(file, kwargs.pop('mode', 'w')) as file:
-            group = file.create_group("LQG Filter")
+        with h5py.File(file, kwargs.pop('mode', 'w')) as h5file:
+            group = h5file.create_group(kwargs.pop("group", "LQG Filter"))
             for name in [ "gains", "alphas", "highpass_coefficients" ]:
                 group.create_dataset(name, data=getattr(self, name), **kwargs)
             
@@ -85,8 +85,9 @@ class LQGBase(Filter, IOBase):
     def __from_hdf5__(cls, file, **kwargs):
         """Read an LQG filter from an HDF5 file."""
         import h5py
-        with h5py.File(file, kwargs.pop('mode', 'r')) as file:
-            group = file.get('LQG Filter', next(iter(file.values())))
+        with h5py.File(file, kwargs.pop('mode', 'r')) as h5file:
+            # Get either the group with the right name, or the first group from the HDF5 file.
+            group = h5file.get(kwargs.pop("group", "LQG Filter"), next(iter(h5file.values())))
             args = [group[name][...] for name in [ "gains", "alphas", "highpass_coefficients" ]]
         return cls(*args)
         
@@ -107,10 +108,12 @@ class LQGBase(Filter, IOBase):
         for HDU, data, comment in zip(HDUs, data_names, comments):
             HDU.header['DATA'] = (data, comment)
         
-        HDUs[0].header['NLAYERS'] = self.nlayers, "Number of layers"
-        HDUs[0].header['SAXES'] = len(self.shape),
-        for i, axis_length in enumerate(self.shape):
-            HDUs[0].header['SAXIS{0:d}'.format(i)] = axis_length
+        # Apply only to the first two HDUs.
+        for HDU in HDUs[0:2]:
+            HDU.header['NLAYERS'] = self.nlayers, "Number of layers"
+            HDU.header['SAXES'] = len(self.shape), "Shape of the phase grid"
+            for i, axis_length in enumerate(self.shape):
+                HDU.header['SAXIS{0:d}'.format(i)] = axis_length, "Axis {0} of the phase grid".format(i)
         
         HDUs[0] = fits.PrimaryHDU(HDUs[0].data, HDUs[0].header)
         
@@ -131,12 +134,22 @@ class LQGBase(Filter, IOBase):
         
     @classmethod
     def generate_integrator(cls, gain, alpha, shape):
-        """Generate an integral controller"""
+        """Generate an integral controller, done by zeroing out the highpass term."""
         if not isinstance(shape, tuple):
             shape = tuple(shape)
         gains = np.float(gain) * np.ones((1,) + shape, dtype=np.complex)
         alphas = np.float(alpha) * np.ones((1,) + shape, dtype=np.complex)
         hp_coeffs = np.zeros(shape, dtype=np.complex)
+        return cls(gains, alphas, hp_coeffs)
+        
+    @classmethod
+    def generate_kalman_filter(cls, k1, alpha, shape):
+        """Generate a generic Kalman filter."""
+        if not isinstance(shape, tuple):
+            shape = tuple(shape)
+        gains = np.float(alpha * k1) * np.ones((1,) + shape, dtype=np.complex)
+        alphas = np.float(alpha) * np.ones((1,) + shape, dtype=np.complex)
+        hp_coeffs = np.float(k1) * np.ones(shape, dtype=np.complex)
         return cls(gains, alphas, hp_coeffs)
 
 class LQGFilter(LQGBase):

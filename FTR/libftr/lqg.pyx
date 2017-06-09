@@ -29,8 +29,17 @@ cdef class CLQGBase:
         self._alphas = alphas
         self._hp_coefficients = hp_coefficients
         
+        if len(self._shape) < 2:
+            sx = self._shape[0]
+            sy = 1
+        elif len(self._shape) == 2:
+            sx, sy = self._shape
+        elif len(self._shape) > 2:
+            sx = self._shape[0]
+            sy = np.prod(self._shape[1:])
+        
         # Finally, generate the filter itself. It is an opaque pointer.
-        self._filter = lqg_new_filter(self._nlayers, self._shape[0], self._shape[1], 
+        self._filter = lqg_new_filter(self._nlayers, sx, sy,
             <complex *>np.PyArray_DATA(self._gains), <complex *>np.PyArray_DATA(self._alphas), 
             <complex *>np.PyArray_DATA(self._hp_coefficients))
         
