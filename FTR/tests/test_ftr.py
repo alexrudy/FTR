@@ -30,6 +30,7 @@ class FourierTransformReconstructorTestBase(ReconstructorTestBase):
     """Test the Fourier Transform Reconstructor."""
     
     cls = ftr.FourierTransformReconstructor
+    name = "FTR"
     
     repr = "<FourierTransformReconstructor {shape} filter='mod_hud'>"
     

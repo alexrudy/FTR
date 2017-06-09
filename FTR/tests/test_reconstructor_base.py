@@ -61,7 +61,7 @@ class ReconstructorTestBase(object):
     def test_recon_bench(self, benchmark, reconstructor, srandom):
         """Benchmark reconstructor results."""
         sx, sy = srandom
-        benchmark.name = benchmark.name[5:] + self.cls.__name__
+        benchmark.name = benchmark.name.replace("test_recon_bench", "recon") + "[{0}]".format(self.name)
         phi = benchmark(reconstructor, sx, sy)
         
     

@@ -13,6 +13,7 @@ class TestFTRLibCython(FourierTransformReconstructorTestBase):
     """Test the Fourier Transform Reconstructor."""
     
     cls = ftr.FastFTReconstructor
+    name = "FastFTR"
     
     repr = "<CFTRBase {shape}>"
     
